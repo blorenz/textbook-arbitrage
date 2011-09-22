@@ -1,8 +1,14 @@
 from lxml import html as lhtml
 import requests
-from models import Amazon_Textbook_Section as ats, Proxy, Book, Amazon
+from models import Amazon_Textbook_Section as ats, Proxy, Book, Amazon, Price
 from django.db import IntegrityError
 import re
+
+def f7(seq):
+    seen = set()
+    seen_add = seen.add
+    return [ x for x in seq if x not in seen and not seen_add(x)]
+
 
 def retrievePage(url,proxy=None):
     if (proxy):
@@ -58,9 +64,8 @@ def detailBook(am):
         money = re.compile(r'\$?(\d*\.\d{2})')#e.g., $.50, .50, $1.50, $.5, .5
         matches = re.findall(money, parseThis)
         if len(matches) >= 2:
-            am.buy = matches[0]
-            am.sell = matches[1]
-            am.save()
+            price = Price(buy = matches[0], sell = matches[1], amazon = am)
+            price.save()
         
     
 def testit():

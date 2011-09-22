@@ -17,6 +17,15 @@ DATABASES = {
         'PASSWORD': 'manganello1',                  # Not used with sqlite3.
         'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
         'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
+    },
+             
+    'tadev': {
+        'ENGINE': 'django.db.backends.mysql', # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
+        'NAME': 'tadev',                      # Or path to database file if using sqlite3.
+        'USER': 'root',                      # Not used with sqlite3.
+        'PASSWORD': 'manganello1',                  # Not used with sqlite3.
+        'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
+        'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
     }
 }
 
@@ -126,6 +135,7 @@ INSTALLED_APPS = (
     'django.contrib.admindocs',
     'ta',
     'south',
+    'gunicorn',
 )
 
 # A sample logging configuration. The only tangible logging
@@ -158,7 +168,6 @@ INSTALLED_APPS += ("djkombu", )
 
 import djcelery
 djcelery.setup_loader()
-BROKER_TRANSPORT = "djkombu.transport.DatabaseTransport"
 
 BROKER_HOST = "localhost"
 BROKER_PORT = 5672
@@ -167,7 +176,7 @@ BROKER_USER = "guest"
 BROKER_PASSWORD = "guest"
 BROKER_VHOST = "/"
 
-CELERYD_CONCURRENCY = 15
-
+CELERYD_CONCURRENCY = 10
+CELERY_RESULT_BACKEND = "amqp"
 
 #end django-celery

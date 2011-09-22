@@ -34,19 +34,19 @@ class Seller(models.Model):
     def __unicode__(self):
         return self.seller.name
 
-class Price(models.Model):
-    buy = models.DecimalField(null=True,max_digits=7,decimal_places=2)
-    sell = models.DecimalField(null=True,max_digits=7,decimal_places=2)
-    timestamp = models.DateTimeField(auto_now_add=True)
-
 class Amazon(models.Model):
     book = models.ForeignKey('Book')
     url = models.CharField(max_length=250)
     rank = models.IntegerField()
-    price = models.ForeignKey('Price', null=True)
     timestamp = models.DateTimeField(auto_now=True)
     def __unicode__(self):
         return self.book.title
+    
+class Price(models.Model):
+    amazon = models.ForeignKey('Amazon', null=True)
+    buy = models.DecimalField(null=True,max_digits=8,decimal_places=2)
+    sell = models.DecimalField(null=True,max_digits=8,decimal_places=2)
+    timestamp = models.DateTimeField(auto_now_add=True)
     
 class Proxy(models.Model):
     proxy_type = models.CharField(max_length=10)

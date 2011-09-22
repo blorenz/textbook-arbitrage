@@ -1,8 +1,29 @@
-from celery.task import task
+from celery.task import TaskSet, task
 from amazon import addCategory
 from amazon import addProxy as ap
 from amazon import findBooks
 from amazon import detailBook
+from ta.models import Amazon_Textbook_Section, Amazon, Price
+
+from itertools import islice
+
+
+
+def chunks(it, n):
+    for first in it:
+        yield [first] + list(islice(it, n - 1))
+
+@task(name='ta.tasks.process_chunk')
+def process_chunk(pks):
+    objs = Amazon.objects.filter(pk__in=pks)
+    for obj in objs:
+        detailBook(obj)
+
+@task(name='ta.tasks.process_lots_of_items')
+def process_lots_of_items(ids_to_process):
+    return TaskSet(process_chunk.subtask((chunk, ))
+                       for chunk in chunks(iter(ids_to_process),
+                                           1000)).apply_async()
 
 
 @task(name='ta.tasks.add')
@@ -12,25 +33,31 @@ def add(x, y):
 @task(name='ta.tasks.addCat')
 def addCat(x):
     addCategory(x)
-    return True
+
 
 @task(name='ta.tasks.addProxy')
 def addProxy(a,x):
     ap(a,x)
-    return True
+
 
 @task(name='ta.tasks.findTheBooks')
 def findTheBooks(url,i):
     findBooks(url,i)
-    return True
 
-@task(name='ta.tasks.detailTheBook')
+
+@task(name='ta.tasks.detailTheBook',ignore_result=True)
 def detailTheBook(am):
     detailBook(am)
-    return True
+    
 
-@task(name='ta.tasks.doTheBooks')
-def doTheBooks(allAm):
-    for am in allAm:
+@task(name='ta.tasks.doTheBooks',ignore_result=True)
+def doTheBooks(objs):
+    for obj in objs:
         detailTheBook.delay(am)
-    return True
+        
+
+@task(name='ta.tasks.doBooks')
+def doBooks(objs):
+    slices = len(objs) / 1000
+    for i in range(0,slices):
+        doTheBooks.delay(objs[i*1000:i*1000+1001])

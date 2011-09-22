@@ -1,0 +1,31 @@
+<html>
+<head>
+<title>Here's the Deals!</title>
+
+<script type="text/javascript" src="http://code.jquery.com/jquery-1.6.4.min.js"></script>
+<script type="text/javascript" src="http://datatables.net/download/build/jquery.dataTables.min.js"></script>
+<link  rel="stylesheet" type="text/css" href="http://www.datatables.net/release-datatables/media/css/demo_table.css" />
+</head>
+<body>
+<span>Deals from {{totalIndexed}} books; {{totalProfitable}} books with buys greater than sells!!!
+<table id="results">
+	<thead>
+	<tr><td>URL</td><td>Buy</td><td>Sell</td><td>Net</td><td>Return on Investment</td><td>RoI + Shipping</td></tr>
+	</thead>
+	<tbody>
+	{% for s in dealList %}
+	<tr><td><a href="{{s.0}}">{{s.1}}</a></td><td>{{s.2}}</td><td>{{s.3}}</td><td>{{s.4}}</td><td>{{s.5}}</td><td>{{s.6}}</td></tr>
+	{% endfor %}
+	</tbody>
+</table>
+</body>
+<script type="text/javascript">
+$(document).ready(function(){
+ $('#results').dataTable({
+	"sPaginationType": "full_numbers",
+        "aaSorting": [[ 3, "desc" ]]
+    });
+});
+
+</script>
+</html>

@@ -10,6 +10,8 @@ urlpatterns = patterns('',
     # url(r'^TextbookArb/', include('TextbookArb.foo.urls')),
     url(r'^def/$', 'TextbookArb.ta.views.defineCategories'),
     url(r'^defProxies/$', 'TextbookArb.ta.views.defineProxies'),
+    url(r'^deals/$', 'TextbookArb.ta.views.getDeals'),
+    url(r'^dealstest/$', 'TextbookArb.ta.views.getDealsTemp'),
     # Uncomment the admin/doc line below to enable admin documentation:
     url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
 
