@@ -10,7 +10,7 @@ from amazon import f7
 
 
 def getDeals(request):
-    dealList = []
+    dictItems = {}
     totalIndexed = Price.objects.count()
     totalProfitable = Price.objects.filter(buy__gte=F('sell')).count()
    # foo = Price.objects.all().extra(where=['amazon_id IS NOT NULL']).distinct().filter(buy__gte=F('sell')+9)
@@ -24,14 +24,14 @@ def getDeals(request):
 		actb = (float(obj.buy)-float(obj.sell)) / (float(obj.sell) + 3.99)
             amz = Amazon.objects.only('url', 'book').filter(pk=obj.amazon.id).get()
             bk = Book.objects.only('title').filter(pk=amz.book.id).get()
-	    dealList.append((amz.url,
+	    dictItems[amz.url] = (amz.url,
                              bk.title,
                             float(obj.buy),
                             float(obj.sell),
                             float(obj.buy) - float(obj.sell),
-			    ctb, actb ))
+			    ctb, actb )
     
-    return render_to_response('deals.html', {'dealList': dealList, 
+    return render_to_response('deals.html', {'dictItems': dictItems, 
                                              'totalIndexed': totalIndexed,
                                              'totalProfitable': totalProfitable,
                                              })

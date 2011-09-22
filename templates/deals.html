@@ -13,7 +13,7 @@
 	<tr><td>URL</td><td>Buy</td><td>Sell</td><td>Net</td><td>Return on Investment</td><td>RoI + Shipping</td></tr>
 	</thead>
 	<tbody>
-	{% for s in dealList %}
+	{% for key,s in dictItems.items %}
 	<tr><td><a href="{{s.0}}">{{s.1}}</a></td><td>{{s.2}}</td><td>{{s.3}}</td><td>{{s.4}}</td><td>{{s.5}}</td><td>{{s.6}}</td></tr>
 	{% endfor %}
 	</tbody>
