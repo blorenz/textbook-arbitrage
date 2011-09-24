@@ -11,10 +11,10 @@ urlpatterns = patterns('',
     url(r'^def/$', 'TextbookArb.ta.views.defineCategories'),
     url(r'^defProxies/$', 'TextbookArb.ta.views.defineProxies'),
     url(r'^deals/$', 'TextbookArb.ta.views.getDeals'),
-    url(r'^dealstest/$', 'TextbookArb.ta.views.getDealsTemp'),
+    url(r'^others/$', 'TextbookArb.ta.views.getOthers'),
     # Uncomment the admin/doc line below to enable admin documentation:
     url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
-
+    url(r'^launch/$', 'TextbookArb.ta.views.launch'),
     # Uncomment the next line to enable the admin:
     url(r'^admin/', include(admin.site.urls)),
 )

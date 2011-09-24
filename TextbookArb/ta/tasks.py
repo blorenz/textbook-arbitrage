@@ -3,7 +3,8 @@ from amazon import addCategory
 from amazon import addProxy as ap
 from amazon import findBooks
 from amazon import detailBook
-from ta.models import Amazon_Textbook_Section, Amazon, Price
+from amazon import findBooksWithPage
+from ta.models import Amazon_Textbook_Section, Amazon, Price, ATS_Middle
 
 from itertools import islice
 
@@ -15,6 +16,10 @@ def chunks(it, n):
 
 @task(name='ta.tasks.process_chunk')
 def process_chunk(pks):
+ #   f = open('/tmp/stuff-' + str(pks[0]) + '.txt', 'w')
+ #   for i in pks:
+ #       f.write(str(i)) 
+ #   f.close()
     objs = Amazon.objects.filter(pk__in=pks)
     for obj in objs:
         detailBook(obj)
@@ -25,6 +30,22 @@ def process_lots_of_items(ids_to_process):
                        for chunk in chunks(iter(ids_to_process),
                                            1000)).apply_async()
 
+@task(name='ta.tasks.process_chunk_cats')
+def process_chunk_cats(pks):
+ #   f = open('/tmp/stuff-' + str(pks[0]) + '.txt', 'w')
+ #   for i in pks:
+ #       f.write(str(i)) 
+ #   f.close()
+    objs = ATS_Middle.objects.filter(pk__in=pks)
+    for obj in objs:
+        findBooksWithPage(obj.url)
+        
+@task(name='ta.tasks.process_lots_of_items_cats')
+def process_lots_of_items_cats(ids_to_process):
+    return TaskSet(process_chunk_cats.subtask((chunk, ))
+                       for chunk in chunks(iter(ids_to_process),
+                                           1000)).apply_async()
+                                           
 
 @task(name='ta.tasks.add')
 def add(x, y):

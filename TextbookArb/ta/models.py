@@ -12,6 +12,9 @@ class Amazon_Textbook_Section(models.Model):
     timestamp = models.DateTimeField(auto_now=True)
     def __unicode__(self):
         return self.title
+
+class ATS_Middle(models.Model):  
+    url = models.CharField(max_length=250, unique=True) 
     
 class Book(models.Model):
     section = models.ForeignKey('Amazon_Textbook_Section')  
@@ -36,7 +39,7 @@ class Seller(models.Model):
 
 class Amazon(models.Model):
     book = models.ForeignKey('Book')
-    url = models.CharField(max_length=250)
+    productcode = models.CharField(primary_key=True,max_length=250)
     rank = models.IntegerField()
     timestamp = models.DateTimeField(auto_now=True)
     def __unicode__(self):

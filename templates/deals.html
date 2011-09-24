@@ -7,14 +7,14 @@
 <link  rel="stylesheet" type="text/css" href="http://www.datatables.net/release-datatables/media/css/demo_table.css" />
 </head>
 <body>
-<span>Deals from {{totalIndexed}} books; {{totalProfitable}} books with buys greater than sells!!!
+<span>Deals from {{totalIndexed}} of {{totalBooks}} books; {{totalProfitable}} books with buys greater than sells!!!
 <table id="results">
 	<thead>
-	<tr><td>URL</td><td>Buy</td><td>Sell</td><td>Net</td><td>Return on Investment</td><td>RoI + Shipping</td></tr>
+	<tr><td>URL</td><td>Buy</td><td>Sell</td><td>Net</td><td>Return on Investment</td><td>RoI + Shipping</td><td>Timestamp</td></tr>
 	</thead>
 	<tbody>
 	{% for key,s in dictItems.items %}
-	<tr><td><a href="{{s.0}}">{{s.1}}</a></td><td>{{s.2}}</td><td>{{s.3}}</td><td>{{s.4}}</td><td>{{s.5}}</td><td>{{s.6}}</td></tr>
+	<tr><td><a href="{{s.0}}">{{s.1}}</a></td><td>{{s.2}}</td><td>{{s.3}}</td><td>{{s.4}}</td><td>{{s.5}}</td><td>{{s.6}}</td><td>{{s.7}}</td></tr>
 	{% endfor %}
 	</tbody>
 </table>

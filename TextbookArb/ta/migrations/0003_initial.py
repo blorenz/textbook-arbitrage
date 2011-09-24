@@ -17,6 +17,13 @@ class Migration(SchemaMigration):
         ))
         db.send_create_signal('ta', ['Amazon_Textbook_Section'])
 
+        # Adding model 'ATS_Middle'
+        db.create_table('ta_ats_middle', (
+            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
+            ('url', self.gf('django.db.models.fields.CharField')(unique=True, max_length=250)),
+        ))
+        db.send_create_signal('ta', ['ATS_Middle'])
+
         # Adding model 'Book'
         db.create_table('ta_book', (
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
@@ -77,6 +84,9 @@ class Migration(SchemaMigration):
         # Deleting model 'Amazon_Textbook_Section'
         db.delete_table('ta_amazon_textbook_section')
 
+        # Deleting model 'ATS_Middle'
+        db.delete_table('ta_ats_middle')
+
         # Deleting model 'Book'
         db.delete_table('ta_book')
 
@@ -109,6 +119,11 @@ class Migration(SchemaMigration):
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'timestamp': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'blank': 'True'}),
             'title': ('django.db.models.fields.CharField', [], {'max_length': '250', 'null': 'True'}),
+            'url': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '250'})
+        },
+        'ta.ats_middle': {
+            'Meta': {'object_name': 'ATS_Middle'},
+            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'url': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '250'})
         },
         'ta.book': {

@@ -9,6 +9,8 @@ def f7(seq):
     seen_add = seen.add
     return [ x for x in seq if x not in seen and not seen_add(x)]
 
+def difference(a, b):
+    return list(set(b).difference(set(a))) 
 
 def retrievePage(url,proxy=None):
     if (proxy):
@@ -34,7 +36,29 @@ def addProxy(type,proxy):
     p = Proxy(proxy_type=type,ip_and_port=proxy)
     p.save()
     
-    
+def findBooksWithPage(url):
+    content = retrievePage(url)
+    urlWithoutPage = re.sub(r'&page=\d{1,3}','',url)
+    html = lhtml.fromstring(content)
+    section = ats.objects.get(url=urlWithoutPage)
+    for table in html.xpath("//table[@class='n2']"):
+        aa = table.cssselect("td.dataColumn a")
+        title = table.cssselect(".srTitle")
+        b = Book(section = section, title = unicode(title[0].text).encode('ascii', 'ignore'))
+        #,url=aa[0].get('href')
+        #b.save()
+        try:
+            b.save()
+        except IntegrityError:
+            print 'Tried to save a dupe 1'
+        re_product_code = re.compile(r'/dp/(.*?)/')
+        pc = re.findall(re_product_code,aa[0].get('href'))
+        s = Amazon(book = b,productcode=pc[0],rank=0)
+        try:
+            s.save()
+        except IntegrityError:
+            print 'Tried to save a dupe 2'
+                
 def findBooks(url,page):
     content = retrievePage(url + '&page=' + str(page))
     html = lhtml.fromstring(content)
@@ -49,14 +73,16 @@ def findBooks(url,page):
             b.save()
         except IntegrityError:
             print 'Tried to save a dupe 1'
-        s = Amazon(book = b,url=aa[0].get('href'),rank=0)
+        re_product_code = re.compile(r'/dp/(.*?)/')
+        pc = re.findall(re_product_code,aa[0].get('href'))
+        s = Amazon(book = b,productcode=pc[0],rank=0)
         try:
             s.save()
         except IntegrityError:
             print 'Tried to save a dupe 2'
         
 def detailBook(am):  
-    content = retrievePage(am.url)
+    content = retrievePage('http://www.amazon.com/dp/' + am.productcode)
     html = lhtml.fromstring(content)
     s = html.xpath("//div[@class='qpHeadline']/..")
     if len(s):
@@ -67,7 +93,7 @@ def detailBook(am):
             price = Price(buy = matches[0], sell = matches[1], amazon = am)
             price.save()
         
-    
+
 def testit():
     url = 'http://www.amazon.com/Organizational-Behavior-Robert-Kreitner/dp/007353045X/ref=pd_sim_b6'
     content = retrievePage(url)
