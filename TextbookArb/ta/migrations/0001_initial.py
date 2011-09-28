@@ -17,12 +17,21 @@ class Migration(SchemaMigration):
         ))
         db.send_create_signal('ta', ['Amazon_Textbook_Section'])
 
+        # Adding model 'ATS_Middle'
+        db.create_table('ta_ats_middle', (
+            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
+            ('section', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['ta.Amazon_Textbook_Section'])),
+            ('page', self.gf('django.db.models.fields.IntegerField')()),
+        ))
+        db.send_create_signal('ta', ['ATS_Middle'])
+
         # Adding model 'Book'
         db.create_table('ta_book', (
-            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
+            ('pckey', self.gf('django.db.models.fields.CharField')(max_length=250, primary_key=True)),
             ('section', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['ta.Amazon_Textbook_Section'])),
             ('title', self.gf('django.db.models.fields.CharField')(max_length=250)),
             ('isbn', self.gf('django.db.models.fields.CharField')(max_length=250, null=True)),
+            ('isbn10', self.gf('django.db.models.fields.CharField')(max_length=250, null=True)),
             ('author', self.gf('django.db.models.fields.CharField')(max_length=250, null=True)),
         ))
         db.send_create_signal('ta', ['Book'])
@@ -44,14 +53,30 @@ class Migration(SchemaMigration):
         ))
         db.send_create_signal('ta', ['Seller'])
 
+        # Adding model 'AmazonRankCategory'
+        db.create_table('ta_amazonrankcategory', (
+            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
+            ('category', self.gf('django.db.models.fields.CharField')(max_length=250)),
+        ))
+        db.send_create_signal('ta', ['AmazonRankCategory'])
+
         # Adding model 'Amazon'
         db.create_table('ta_amazon', (
             ('book', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['ta.Book'])),
             ('productcode', self.gf('django.db.models.fields.CharField')(max_length=250, primary_key=True)),
-            ('rank', self.gf('django.db.models.fields.IntegerField')()),
             ('timestamp', self.gf('django.db.models.fields.DateTimeField')(auto_now=True, blank=True)),
         ))
         db.send_create_signal('ta', ['Amazon'])
+
+        # Adding model 'AmazonRank'
+        db.create_table('ta_amazonrank', (
+            ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
+            ('amazon', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['ta.Amazon'])),
+            ('rank', self.gf('django.db.models.fields.IntegerField')()),
+            ('category', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['ta.AmazonRankCategory'])),
+            ('timestamp', self.gf('django.db.models.fields.DateTimeField')(auto_now=True, blank=True)),
+        ))
+        db.send_create_signal('ta', ['AmazonRank'])
 
         # Adding model 'Price'
         db.create_table('ta_price', (
@@ -77,6 +102,9 @@ class Migration(SchemaMigration):
         # Deleting model 'Amazon_Textbook_Section'
         db.delete_table('ta_amazon_textbook_section')
 
+        # Deleting model 'ATS_Middle'
+        db.delete_table('ta_ats_middle')
+
         # Deleting model 'Book'
         db.delete_table('ta_book')
 
@@ -86,8 +114,14 @@ class Migration(SchemaMigration):
         # Deleting model 'Seller'
         db.delete_table('ta_seller')
 
+        # Deleting model 'AmazonRankCategory'
+        db.delete_table('ta_amazonrankcategory')
+
         # Deleting model 'Amazon'
         db.delete_table('ta_amazon')
+
+        # Deleting model 'AmazonRank'
+        db.delete_table('ta_amazonrank')
 
         # Deleting model 'Price'
         db.delete_table('ta_price')
@@ -101,7 +135,6 @@ class Migration(SchemaMigration):
             'Meta': {'object_name': 'Amazon'},
             'book': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['ta.Book']"}),
             'productcode': ('django.db.models.fields.CharField', [], {'max_length': '250', 'primary_key': 'True'}),
-            'rank': ('django.db.models.fields.IntegerField', [], {}),
             'timestamp': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'blank': 'True'})
         },
         'ta.amazon_textbook_section': {
@@ -111,11 +144,31 @@ class Migration(SchemaMigration):
             'title': ('django.db.models.fields.CharField', [], {'max_length': '250', 'null': 'True'}),
             'url': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '250'})
         },
+        'ta.amazonrank': {
+            'Meta': {'object_name': 'AmazonRank'},
+            'amazon': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['ta.Amazon']"}),
+            'category': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['ta.AmazonRankCategory']"}),
+            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'rank': ('django.db.models.fields.IntegerField', [], {}),
+            'timestamp': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'blank': 'True'})
+        },
+        'ta.amazonrankcategory': {
+            'Meta': {'object_name': 'AmazonRankCategory'},
+            'category': ('django.db.models.fields.CharField', [], {'max_length': '250'}),
+            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'})
+        },
+        'ta.ats_middle': {
+            'Meta': {'object_name': 'ATS_Middle'},
+            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'page': ('django.db.models.fields.IntegerField', [], {}),
+            'section': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['ta.Amazon_Textbook_Section']"})
+        },
         'ta.book': {
             'Meta': {'object_name': 'Book'},
             'author': ('django.db.models.fields.CharField', [], {'max_length': '250', 'null': 'True'}),
-            'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'isbn': ('django.db.models.fields.CharField', [], {'max_length': '250', 'null': 'True'}),
+            'isbn10': ('django.db.models.fields.CharField', [], {'max_length': '250', 'null': 'True'}),
+            'pckey': ('django.db.models.fields.CharField', [], {'max_length': '250', 'primary_key': 'True'}),
             'section': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['ta.Amazon_Textbook_Section']"}),
             'title': ('django.db.models.fields.CharField', [], {'max_length': '250'})
         },

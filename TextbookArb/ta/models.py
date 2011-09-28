@@ -13,13 +13,16 @@ class Amazon_Textbook_Section(models.Model):
     def __unicode__(self):
         return self.title
 
-class ATS_Middle(models.Model):  
-    url = models.CharField(max_length=250, unique=True) 
+class ATS_Middle(models.Model):
+    section = models.ForeignKey('Amazon_Textbook_Section')
+    page = models.IntegerField()
     
 class Book(models.Model):
+    pckey = models.CharField(primary_key=True,max_length=250)
     section = models.ForeignKey('Amazon_Textbook_Section')  
     title= models.CharField(max_length=250)
     isbn= models.CharField(max_length=250,null=True)
+    isbn10=models.CharField(max_length=250,null=True)
     author = models.CharField(max_length=250,null=True)
     def __unicode__(self):
         return self.title
@@ -37,13 +40,23 @@ class Seller(models.Model):
     def __unicode__(self):
         return self.seller.name
 
+class AmazonRankCategory(models.Model):
+    category = models.CharField(max_length=250)   
+
+    
 class Amazon(models.Model):
     book = models.ForeignKey('Book')
     productcode = models.CharField(primary_key=True,max_length=250)
-    rank = models.IntegerField()
     timestamp = models.DateTimeField(auto_now=True)
     def __unicode__(self):
         return self.book.title
+    
+class AmazonRank(models.Model):
+    amazon = models.ForeignKey('Amazon')
+    rank = models.IntegerField()
+    category = models.ForeignKey('AmazonRankCategory')
+    timestamp = models.DateTimeField(auto_now=True)
+    
     
 class Price(models.Model):
     amazon = models.ForeignKey('Amazon', null=True)

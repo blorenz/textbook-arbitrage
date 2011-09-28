@@ -5,9 +5,21 @@
 <script type="text/javascript" src="http://code.jquery.com/jquery-1.6.4.min.js"></script>
 <script type="text/javascript" src="http://datatables.net/download/build/jquery.dataTables.min.js"></script>
 <link  rel="stylesheet" type="text/css" href="http://www.datatables.net/release-datatables/media/css/demo_table.css" />
+<style type="text/css">
+table#results { width: 100% }
+</style>
 </head>
 <body>
 <span>Deals from {{totalIndexed}} of {{totalBooks}} books; {{totalProfitable}} books with buys greater than sells!!!
+<div><a href="https://www.amazon.com/gp/tradein/multicondition-your-account?ie=UTF8&*Version*=1&*entries*=0&">Go to your Amazon Trade-In Account</a>
+</div>
+<div>
+<form method="GET" action="">
+<label for="name">Search Amazon</label>
+<input type="text" length="100" name="search" />
+<input type="submit" value="Go!"/>
+</form>
+</div>
 <table id="results">
 	<thead>
 	<tr><td>URL</td><td>Buy</td><td>Sell</td><td>Net</td><td>Return on Investment</td><td>RoI + Shipping</td><td>Timestamp</td></tr>

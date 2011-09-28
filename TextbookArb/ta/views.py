@@ -11,8 +11,10 @@ from amazon import f7, difference
 
 def getDeals(request):
     dictItems = {}
-    totalIndexedL = Price.objects.raw("SELECT id, count(DISTINCT amazon_id) AS thecount FROM ta_price")
-    totalIndexed = totalIndexedL[0].thecount
+    
+    #totalIndexedL = Price.objects.raw("SELECT id, count(DISTINCT amazon_id) AS thecount FROM ta_price")
+    #totalIndexed = totalIndexedL[0].thecount
+    totalIndexed = Price.objects.values('amazon_id').distinct().count()
     totalBooks = Amazon.objects.count()
     totalProfitable = Price.objects.filter(buy__gte=F('sell')).values('amazon_id').distinct().count()
    # foo = Price.objects.all().extra(where=['amazon_id IS NOT NULL']).distinct().filter(buy__gte=F('sell')+9)
@@ -24,9 +26,9 @@ def getDeals(request):
 	    if (float(obj.sell) != 0):
 		ctb = (float(obj.buy)-float(obj.sell)) / float(obj.sell)
 		actb = (float(obj.buy)-float(obj.sell)) / (float(obj.sell) + 3.99)
-            amz = Amazon.objects.only('url', 'book').filter(pk=obj.amazon.id).get()
-            bk = Book.objects.only('title').filter(pk=amz.book.id).get()
-	    dictItems[amz.url] = (amz.url,
+            amz = Amazon.objects.only('productcode', 'book').filter(pk=obj.amazon.productcode).get()
+            bk = Book.objects.only('title').filter(pk=amz.book.pckey).get()
+	    dictItems[amz.productcode] = ("http://www.amazon.com/dp/" + amz.productcode,
                              bk.title,
                             float(obj.buy),
                             float(obj.sell),
@@ -38,6 +40,7 @@ def getDeals(request):
                                              'totalProfitable': totalProfitable,
                                              'totalBooks': totalBooks,
                                              })
+
 
 def launch(request):   
     objs = ATS_Middle.objects.values_list('id', flat=True)      
@@ -58,7 +61,7 @@ def defineCategories(request):
         else:
             for cat in Amazon_Textbook_Section.objects.all():
                  for i in range(1,101):
-                     ATS_Middle.objects.create(url=cat.url + "&page="+  str(i))
+                     ATS_Middle.objects.create(page=i,section=cat)
                      #tasks.findTheBooks.delay(cat.url,i)
             return HttpResponse('Done!')
     else:
@@ -69,11 +72,11 @@ def defineCategories(request):
 
 
 def getOthers(request):
-     t = Amazon.objects.values_list('id', flat=True).distinct()
+     t = Amazon.objects.values_list('productcode', flat=True).distinct()
      p = Price.objects.values_list('amazon_id', flat=True).distinct()
      s = difference(p,t)
      tasks.process_lots_of_items(s)
-     return HttpResponse("Created " + str(len(s)) + " tasks" + str(t) + "<br><br><br>" + str(p)+ "<br><br><br>" + str(s))
+     return HttpResponse("Created " + str(len(s)) + " tasks")# + str(t) + "<br><br><br>" + str(p)+ "<br><br><br>" + str(s))
       
 def defineProxies(request):
     if request.method == 'POST':
@@ -83,7 +86,7 @@ def defineProxies(request):
                 tasks.addProxy.delay('http',url)
             return HttpResponse(str(len(urls)))
         else:
-            objs = Amazon.objects.values_list('id', flat=True)
+            objs = Amazon.objects.values_list('productcode', flat=True)
             
             tasks.process_lots_of_items(objs)
 

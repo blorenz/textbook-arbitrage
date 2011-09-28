@@ -1,6 +1,8 @@
 from lxml import html as lhtml
+from lxml import etree
+from lxml.html.clean import clean_html
 import requests
-from models import Amazon_Textbook_Section as ats, Proxy, Book, Amazon, Price
+from models import Amazon_Textbook_Section as ats, Proxy, Book, Amazon, Price, AmazonRankCategory, AmazonRank
 from django.db import IntegrityError
 import re
 
@@ -13,10 +15,13 @@ def difference(a, b):
     return list(set(b).difference(set(a))) 
 
 def retrievePage(url,proxy=None):
+    
     if (proxy):
-        theProxy = Proxy.objects.order_by('?')[0];
+        theProxy = Proxy.objects.order_by('?')[0]
         proxy = {theProxy.proxy_type:theProxy.ip_and_port}
-    r = requests.get(url,proxies=proxy)
+        r = requests.get(url,proxies=proxy)
+    else:
+        r = requests.get(url)
     return r.content
 
 
@@ -29,35 +34,12 @@ def importContent(url,content):
         print 'Tried to save a dupe'
       
 def addCategory(url):
-    content = retrievePage(url,proxy=True)
+    content = retrievePage(url,proxy=False)
     importContent(url,content)
     
 def addProxy(type,proxy):
     p = Proxy(proxy_type=type,ip_and_port=proxy)
     p.save()
-    
-def findBooksWithPage(url):
-    content = retrievePage(url)
-    urlWithoutPage = re.sub(r'&page=\d{1,3}','',url)
-    html = lhtml.fromstring(content)
-    section = ats.objects.get(url=urlWithoutPage)
-    for table in html.xpath("//table[@class='n2']"):
-        aa = table.cssselect("td.dataColumn a")
-        title = table.cssselect(".srTitle")
-        b = Book(section = section, title = unicode(title[0].text).encode('ascii', 'ignore'))
-        #,url=aa[0].get('href')
-        #b.save()
-        try:
-            b.save()
-        except IntegrityError:
-            print 'Tried to save a dupe 1'
-        re_product_code = re.compile(r'/dp/(.*?)/')
-        pc = re.findall(re_product_code,aa[0].get('href'))
-        s = Amazon(book = b,productcode=pc[0],rank=0)
-        try:
-            s.save()
-        except IntegrityError:
-            print 'Tried to save a dupe 2'
                 
 def findBooks(url,page):
     content = retrievePage(url + '&page=' + str(page))
@@ -66,16 +48,21 @@ def findBooks(url,page):
     for table in html.xpath("//table[@class='n2']"):
         aa = table.cssselect("td.dataColumn a")
         title = table.cssselect(".srTitle")
-        b = Book(section = section, title = unicode(title[0].text).encode('ascii', 'ignore'))
-        #,url=aa[0].get('href')
-        #b.save()
-        try:
-            b.save()
-        except IntegrityError:
-            print 'Tried to save a dupe 1'
         re_product_code = re.compile(r'/dp/(.*?)/')
         pc = re.findall(re_product_code,aa[0].get('href'))
-        s = Amazon(book = b,productcode=pc[0],rank=0)
+        
+        b = Book.objects.filter(pckey=pc)
+        
+        if len(b) == 0:
+            b = Book(pckey=pc,section = section, title = unicode(title[0].text).encode('ascii', 'ignore'))
+            try:
+                b.save()
+            except IntegrityError:
+                print 'Tried to save a dupe 1'
+        else:
+            b = b[0]
+          
+        s = Amazon(book = b,productcode=pc[0])
         try:
             s.save()
         except IntegrityError:
@@ -92,6 +79,48 @@ def detailBook(am):
         if len(matches) >= 2:
             price = Price(buy = matches[0], sell = matches[1], amazon = am)
             price.save()
+            #print "Ranked"
+            #print("Price buy %s and sell %s for %s" % (matches[0],matches[1],am.book.title))
+    else:
+        price = Price(amazon = am)
+        print "not Ranked"
+        price.save()
+    	
+    s = html.xpath("//td[@class='bucket']/div[@class='content']/ul/li")
+    rankCategory = "None"
+    rankNoComma = "0"
+    
+    for t in s:
+        i = t.xpath("script")
+        for j in i:
+            t.remove(j)
+        #for u,t in enumerate(s):
+        txt = t.text_content().strip()
+        
+        matches = re.match(r'ISBN-10: ([\d\w]+)',txt)
+        if matches != None:
+            am.book.isbn10 = matches.group(1)
+       
+        matches = re.match(r'ISBN-13: ([-\d\w]+)',txt)
+        if matches != None:
+            am.book.isbn = matches.group(1)
+        
+        matches = re.match(r'Amazon Best Sellers Rank:\s+#([,\d]+) in ([\w\s]+) \(',txt)
+        if matches != None:
+            rankNoComma = re.sub(",","",matches.group(1))
+            rankCategory = matches.group(2)
+                
+    print ("ISBN %s and IBSN-10 %s and rank is %s in %s" % (am.book.isbn, am.book.isbn10, rankNoComma, rankCategory))
+    am.book.save() 
+    arc = AmazonRankCategory.objects.filter(category = rankCategory)
+    if len(arc) == 0:
+        arc = AmazonRankCategory(category=rankCategory)
+        arc.save()
+    else:
+        arc = arc[0]
+    #print arc
+    ar = AmazonRank(amazon = am, rank = int(rankNoComma), category = arc)
+    ar.save()
         
 
 def testit():
@@ -108,8 +137,58 @@ def testit():
         if len(matches) >= 2:
             print matches[0]
             print matches[1]
+    s = html.xpath("//td[@class='bucket']/div[@class='content']/ul/li")
+    for t in s:
+        i = t.xpath("script")
+        for j in i:
+            t.remove(j)
+        for u,t in enumerate(s):
+            txt = t.text_content().strip()
+            matches = re.match(r'ISBN-10: ([\d\w]+)',txt)
+            if matches != None:
+                print matches.group(1)
+            matches = re.match(r'ISBN-13: ([-\d\w]+)',txt)
+            if matches != None:
+                    print matches.group(1)
+            matches = re.match(r'Amazon Best Sellers Rank:\s+#([,\d]+) in [\w\s]+ \(',txt)
+            if matches != None:
+                    print matches.group(1)
 
-    
+def testit2():
+    url = 'http://www.amazon.com/Organizational-Behavior-Robert-Kreitner/dp/007353045X/ref=pd_sim_b6'
+    content = retrievePage(url)
+    html = lhtml.fromstring(content)
+    f = open('/tmp/text.html', 'w')
+    f.write(content)
+    f.close()
+    s = html.xpath("//td[@class='bucket']/div[@class='content']/ul/li")
+    for t in s:
+	i = t.xpath("script")
+	for j in i:
+		t.remove(j)
+    for u,t in enumerate(s):
+	txt = t.text_content().strip()
+	matches = re.match(r'ISBN-10: ([\d\w]+)',txt)
+	if matches != None:
+		print matches.group(1)
+	matches = re.match(r'ISBN-13: ([-\d\w]+)',txt)
+        if matches != None:
+                print matches.group(1)
+	matches = re.match(r'Amazon Best Sellers Rank:\s+#([,\d]+) in [\w\s]+ \(',txt)
+        if matches != None:
+                print matches.group(1)
+        
+        
+#    if len(s):
+#        parseThis = s[0].text_content()
+#        money = re.compile(r'\$?(\d*\.\d{2})')#e.g., $.50, .50, $1.50, $.5, .5
+#        print parseThis
+#        matches = re.findall(money, parseThis)
+#        print matches
+#        if len(matches) >= 2:
+#            print matches[0]
+#            print matches[1]
+            
 def testthis2(url,i):
     url = 'http://www.amazon.com/gp/search/ref=sr_nr_n_0?rh=n%3A283155%2Cn%3A%212349030011%2Cn%3A465600%2Cn%3A468220%2Cn%3A491564&bbn=468220&ie=UTF8&qid=1316294420&rnid=468220'
     findBooks(url,i)
@@ -129,4 +208,4 @@ def testthis():
         print 'Tried to save a dupe'
     
 if (__name__ == '__main__'):
-    testit()
+    testit2()
