@@ -7,8 +7,29 @@ from celery.task.sets import TaskSet
 from django.db.models import F
 import tasks
 from amazon import f7, difference
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
 
-
+def loginThing(request):
+    if request.method == 'POST':
+     username = request.POST['l']
+     password = request.POST['p']
+     user = authenticate(username=username, password=password)
+     if (user is not None):
+         if user.is_active:
+           login(request,user)
+           return HttpResponse("Logged in!!")
+         else:
+            return HttpResponse("Disabled account!")
+     else:
+            
+            return HttpResponse("No Account! ")
+    else:
+        c = {}
+        c.update(csrf(request))
+        return render_to_response('login.html',c)
+	
+@login_required(login_url='/login/')
 def getDeals(request):
     dictItems = {}
     
@@ -19,7 +40,7 @@ def getDeals(request):
     totalProfitable = Price.objects.filter(buy__gte=F('sell')).values('amazon_id').distinct().count()
    # foo = Price.objects.all().extra(where=['amazon_id IS NOT NULL']).distinct().filter(buy__gte=F('sell')+9)
    # foo = Price.objects.raw('SELECT DISTINCT amazon_id, buy, sell FROM ta_price WHERE `ta_price`.`buy` >=  `ta_price`.`sell` + 9')
-    foo = Price.objects.order_by('-timestamp').distinct().only('amazon', 'buy', 'sell', 'timestamp').filter(buy__gte=F('sell')+9)
+    foo = Price.objects.order_by('-timestamp').distinct().only('amazon', 'buy', 'sell', 'timestamp').filter(buy__gte=F('sell'))
     for obj in foo:
 	    ctb = 0
 	    actb = 0
@@ -39,9 +60,13 @@ def getDeals(request):
                                              'totalIndexed': totalIndexed,
                                              'totalProfitable': totalProfitable,
                                              'totalBooks': totalBooks,
+                                             'username': request.user.username,
                                              })
 
-
+def logout_user(request):
+	logout(request)
+	return HttpResponse("Logged out!")
+	
 def launch(request):   
     objs = ATS_Middle.objects.values_list('id', flat=True)      
     tasks.process_lots_of_items_cats(objs) 
