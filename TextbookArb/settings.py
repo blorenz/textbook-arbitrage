@@ -107,10 +107,15 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
 )
 
 ROOT_URLCONF = 'TextbookArb.urls'
 
+INTERNAL_IPS = ('127.0.0.1',
+                '75.22.96.55',
+		'63.72.209.229',
+                )
 TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
     # Always use forward slashes, even on Windows.
@@ -136,6 +141,19 @@ INSTALLED_APPS = (
     'ta',
     'south',
     'gunicorn',
+    'debug_toolbar',
+)
+
+DEBUG_TOOLBAR_PANELS = (
+    'debug_toolbar.panels.version.VersionDebugPanel',
+    'debug_toolbar.panels.timer.TimerDebugPanel',
+    'debug_toolbar.panels.settings_vars.SettingsVarsDebugPanel',
+    'debug_toolbar.panels.headers.HeaderDebugPanel',
+    'debug_toolbar.panels.request_vars.RequestVarsDebugPanel',
+    'debug_toolbar.panels.template.TemplateDebugPanel',
+    'debug_toolbar.panels.sql.SQLDebugPanel',
+    'debug_toolbar.panels.signals.SignalDebugPanel',
+    'debug_toolbar.panels.logger.LoggingPanel',
 )
 
 # A sample logging configuration. The only tangible logging
@@ -180,6 +198,6 @@ CELERYD_CONCURRENCY = 6
 CELERY_RESULT_BACKEND = "amqp"
 CELERY_AMQP_TASK_RESULT_EXPIRES = 30  # 5 hours.
 CELERYD_MAX_TASKS_PER_CHILD = 3
-CELERYD_TASK_TIME_LIMIT = 300
+CELERYD_TASK_TIME_LIMIT = 180   
 
 #end django-celery

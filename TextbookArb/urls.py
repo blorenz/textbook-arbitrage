@@ -18,5 +18,8 @@ urlpatterns = patterns('',
     # Uncomment the next line to enable the admin:
     url(r'^admin/', include(admin.site.urls)),
     url(r'^login/$', 'TextbookArb.ta.views.loginThing'),
-     url(r'^logout/$', 'TextbookArb.ta.views.logout_user'),
+    url(r'^logout/$', 'TextbookArb.ta.views.logout_user'),
+    url(r'^lazy/$', 'TextbookArb.ta.views.lazy'),
+    url(r'^known/$', 'TextbookArb.ta.views.getKnown'),
+    url(r'^allknown/$', 'TextbookArb.ta.views.getAllKnown'),
 )

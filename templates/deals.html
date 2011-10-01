@@ -36,17 +36,38 @@
 	</thead>
 	<tbody>
 	{% for key,s in dictItems.items %}
-	<tr><td><a href="{{s.0}}">{{s.1}}</a><a href="{{s.0}}" target="_blank"><img src="/static/icon_open_new_window.gif"></a></td><td>{{s.2}}</td><td>{{s.3}}</td><td>{{s.4}}</td><td>{{s.5}}</td><td>{{s.6}}</td><td>{{s.7}}</td></tr>
+	<tr product="{{s.8}}"><td><a href="{{s.0}}">{{s.1}}</a><a href="{{s.0}}" target="_blank"><img src="/static/icon_open_new_window.gif"></a></td><td>{{s.2}}</td><td>{{s.3}}</td><td>{{s.4}}</td><td>{{s.5}}</td><td>{{s.6}}</td><td>{{s.7}}</td></tr>
 	{% endfor %}
 	</tbody>
 </table>
 </body>
 <script type="text/javascript">
+
+var doAjax = function(code) {
+	 $.ajax({
+			type: "GET",
+			url: "/lazy/",
+			data: "product=" + code
+			// Add success function
+		 });	
+}
+
 $(document).ready(function(){
+	
+	$('tbody tr a').bind("click", function() {
+		 doAjax($(this).parent().parent().attr('product'))
+		 	 
+		 });
  $('#results').dataTable({
 	"sPaginationType": "full_numbers",
         "aaSorting": [[ 3, "desc" ]]
     });
+ 
+ 
+	
+ 
+ 
+ 
 });
 
 </script>

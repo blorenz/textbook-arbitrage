@@ -20,6 +20,7 @@ def process_chunk(pks,ignore_result=True):
  #       f.write(str(i)) 
  #   f.close()
     objs = Amazon.objects.filter(pk__in=pks)
+    print str(len(objs))
     for obj in objs:
         detailBook(obj)
 
@@ -27,7 +28,7 @@ def process_chunk(pks,ignore_result=True):
 def process_lots_of_items(ids_to_process):
     return TaskSet(process_chunk.subtask((chunk, ))
                        for chunk in chunks(iter(ids_to_process),
-                                           1000)).apply_async()
+                                           25)).apply_async()
 
 @task(name='ta.tasks.process_chunk_cats')
 def process_chunk_cats(pks,ignore_result=True):
@@ -38,7 +39,6 @@ def process_chunk_cats(pks,ignore_result=True):
     objs = ATS_Middle.objects.filter(pk__in=pks)
     for obj in objs:
         findBooks(obj.section.url,obj.page)
-    return len(objs)
         
 @task(name='ta.tasks.process_lots_of_items_cats')
 def process_lots_of_items_cats(ids_to_process):
@@ -56,7 +56,7 @@ def addCat(x):
 def addProxy(a,x):
     ap(a,x)
     
-@task(name='ta.tasks.addTest',ignore_result=True)
+@task(name='ta.tasks.addTest')
 def addTest(a,x):
     return a + x
 

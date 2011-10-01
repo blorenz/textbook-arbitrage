@@ -68,10 +68,13 @@ def findBooks(url,page):
         except IntegrityError:
             print 'Tried to save a dupe 2'
         
-def detailBook(am):  
+def detailBook(am):
+    '''Grabs the details of a book page including Buy, Sell, Rank, ISBN'''
     content = retrievePage('http://www.amazon.com/dp/' + am.productcode)
     html = lhtml.fromstring(content)
     s = html.xpath("//div[@class='qpHeadline']/..")
+    ###sqlQuery = "SELECT * FROM ( SELECT *, row_number() over (partition by amazon_id order by timestamp DESC) r from ta_price ) x where r = 1 AND amazon_id = '" + am.productcode + "' LIMIT 1";
+    ###foo = Price.objects.raw(sqlQuery)
     if len(s):
         parseThis = s[0].text_content()
         money = re.compile(r'\$?(\d*\.\d{2})')#e.g., $.50, .50, $1.50, $.5, .5
@@ -122,7 +125,90 @@ def detailBook(am):
     ar = AmazonRank(amazon = am, rank = int(rankNoComma), category = arc)
     ar.save()
         
-
+'''
+   New Detail book:
+   
+   if div#more-buying-choice-content-div
+   if children divs == 3
+     parse first-child with span.price
+     parse third-child with div 2 span
+'''
+#//div[contains(concat(' ',normalize-space(@class),' '),' result')]
+def countBooksInCategory(url):
+    '''Counts how may books are in each category, to intelligently scrape the 
+	correct number of pages.'''
+    content = retrievePage(url)
+    html = lhtml.fromstring(content)
+    st = open('/virtualenvs/ta/ta/static/static/testing.html','w')
+    st.write(content)
+    st.close()
+    
+    s = html.xpath("//td[@class='resultCount']")
+    resultsNoComma = 0
+  
+    if len(s):
+        txt = s[0].text_content().strip()
+        print txt 
+        matches = re.search(r'of\s+([,\d]+) Results',txt)
+        
+        if matches != None:
+            resultsNoComma = re.sub(",","",matches.group(1))
+            
+    return resultsNoComma
+    
+def getBooksOnTradeinPage(url,page):
+    '''Gets all the books on the tradein page'''
+    content = retrievePage(url + "page=" + str(page))
+    html = lhtml.fromstring(content)
+    #st = open('/virtualenvs/ta/ta/static/static/testing.html','w')
+    #st.write(content)
+    #st.close()
+    
+    s = html.xpath("//div[contains(concat(' ',normalize-space(@class),' '),' result ')]")
+  
+    for result in s:
+        aa = table.cssselect("td.dataColumn a")
+        title = table.cssselect(".srTitle")
+        re_product_code = re.compile(r'/dp/(.*?)/')
+        pc = re.findall(re_product_code,aa[0].get('href'))
+        
+        b = Book.objects.filter(pckey=pc)
+        
+        if len(b) == 0:
+            b = Book(pckey=pc,section = section, title = unicode(title[0].text).encode('ascii', 'ignore'))
+            try:
+                b.save()
+            except IntegrityError:
+                print 'Tried to save a dupe 1'
+        else:
+            b = b[0]
+          
+        s = Amazon(book = b,productcode=pc[0])
+        try:
+            s.save()
+        except IntegrityError:
+            print 'Tried to save a dupe 2'
+        
+def tic(url,page):  
+    '''Gets all the books on the tradein page'''
+    print 'Going to page: ' + str(page)
+    content = retrievePage(url + "&page=" + str(page))
+    html = lhtml.fromstring(content)
+    st = open('/virtualenvs/ta/ta/static/static/testing.html','w')
+    st.write(content)
+    st.close()
+    
+    s = html.xpath("//table[@class='n2']")
+  
+    for table in s:
+        aa = table.cssselect("td.dataColumn a")
+        title = table.cssselect(".srTitle")
+        re_product_code = re.compile(r'/dp/(.*?)/')
+        pc = re.findall(re_product_code,aa[0].get('href'))
+        
+        print pc[0] + "  : " +  title[0].text
+        
+        
 def testit():
     url = 'http://www.amazon.com/Organizational-Behavior-Robert-Kreitner/dp/007353045X/ref=pd_sim_b6'
     content = retrievePage(url)
@@ -188,24 +274,14 @@ def testit2():
 #        if len(matches) >= 2:
 #            print matches[0]
 #            print matches[1]
-            
-def testthis2(url,i):
-    url = 'http://www.amazon.com/gp/search/ref=sr_nr_n_0?rh=n%3A283155%2Cn%3A%212349030011%2Cn%3A465600%2Cn%3A468220%2Cn%3A491564&bbn=468220&ie=UTF8&qid=1316294420&rnid=468220'
-    findBooks(url,i)
+           
 
 def testthis():
-    url = 'http://www.amazon.com/gp/search/ref=sr_nr_n_0?rh=n%3A283155%2Cn%3A!2349030011%2Cn%3A465600%2Cn%3A468220%2Cn%3A491564&bbn=468220&ie=UTF8&qid=1316313331&rnid=468220'
-    content = retrievePage(url)
-    print content
-    f = open('/tmp/text.html', 'w')
-    f.write(content)
-    f.close()
-    html = lhtml.fromstring(content)
-    a = ats(url=unicode(url).encode('ascii', 'ignore'),title = unicode(html.xpath("//*[@class='breadCrumb']")[0].text_content()).encode('ascii', 'ignore'))
-    try:
-        a.save()
-    except IntegrityError:
-        print 'Tried to save a dupe'
+    url = 'http://www.amazon.com/gp/search/ref=sr_ex_n_1?rh=n%3A283155%2Cn%3A%2144258011%2Cn%3A2205237011%2Cn%3A5&bbn=2205237011&ie=UTF8&qid=1317397002'
+    url2= 'http://www.amazon.com/Programming-Objective-C-3rd-Developers-Library/dp/0321711394/ref=sr_1_32?ie=UTF8&s=textbooks-trade-in&qid=1317401882&sr=1-32'
+    
+    for i in range(100):
+    	tic(url,i)
     
 if (__name__ == '__main__'):
     testit2()

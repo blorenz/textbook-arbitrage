@@ -29,18 +29,53 @@ def loginThing(request):
         c.update(csrf(request))
         return render_to_response('login.html',c)
 	
+    
+    
+def lazy(request):
+    objs = Amazon.objects.values_list('productcode', flat=True).filter(productcode=request.GET['product'])
+    tasks.process_lots_of_items(objs)
+    return HttpResponse("done")
+    
+    
+    
+    
+def getKnown(request):   
+    foo = Price.objects.raw('SELECT id,amazon_id FROM ( SELECT *, row_number() over (partition by amazon_id order by timestamp DESC) r from ta_price ) x where r = 1 AND buy > sell')
+    f = []
+    for s in foo:
+        f.append(s.amazon_id)
+    tasks.process_lots_of_items(f)    
+    return HttpResponse('Doing so for %d for %s' % (len(f), str(f)))
+    
+def getAllKnown(request):   
+    foo = Price.objects.raw('SELECT id,amazon_id FROM ( SELECT *, row_number() over (partition by amazon_id order by timestamp DESC) r from ta_price ) x where r = 1 AND buy <> null')
+    f = []
+    for s in foo:
+        f.append(s.amazon_id)
+    tasks.process_lots_of_items(f)    
+    return HttpResponse('Doing so for %d' % (len(f), ))
+
 @login_required(login_url='/login/')
 def getDeals(request):
     dictItems = {}
     
-    #totalIndexedL = Price.objects.raw("SELECT id, count(DISTINCT amazon_id) AS thecount FROM ta_price")
+    if request.user.username == 'brandon':
+      referer = 'http://www.amazon.com/gp/product/%s/ref=as_li_ss_tl?ie=UTF8&tag=deafordea-20&linkCode=as2&camp=217145&creative=399373&creativeASIN=%s'
+    else:
+      referer = 'http://www.amazon.com/gp/product/%s/ref=as_li_ss_tl?ie=UTF8&tag=ngre-20&linkCode=as2&camp=217145&creative=399373&creativeASIN=%s'
+    #totalIndexedL = Price.objects.raw('SELECT "ta_price"."id", COUNT(DISTINCT "ta_price"."amazon_id") AS thecount FROM "ta_price"')
     #totalIndexed = totalIndexedL[0].thecount
-    totalIndexed = Price.objects.values('amazon_id').distinct().count()
+    totalIndexed = Price.objects.only('amazon_id').distinct().count()
+    #totalIndexedL = Price.objects.raw('select id, count(distinct amazon_id) AS thecount from ta_price')
+    #totalIndexed = totalIndexedL[0].thecount
+    
     totalBooks = Amazon.objects.count()
     totalProfitable = Price.objects.filter(buy__gte=F('sell')).values('amazon_id').distinct().count()
    # foo = Price.objects.all().extra(where=['amazon_id IS NOT NULL']).distinct().filter(buy__gte=F('sell')+9)
    # foo = Price.objects.raw('SELECT DISTINCT amazon_id, buy, sell FROM ta_price WHERE `ta_price`.`buy` >=  `ta_price`.`sell` + 9')
-    foo = Price.objects.order_by('-timestamp').distinct().only('amazon', 'buy', 'sell', 'timestamp').filter(buy__gte=F('sell'))
+    #foo = Price.objects.order_by('-timestamp').distinct().only('amazon', 'buy', 'sell', 'timestamp').filter(buy__gte=F('sell'))
+    foo = Price.objects.raw('SELECT * FROM ( SELECT *, row_number() over (partition by amazon_id order by timestamp DESC) r from ta_price ) x where r = 1 AND buy > sell + 9')
+
     for obj in foo:
 	    ctb = 0
 	    actb = 0
@@ -49,12 +84,12 @@ def getDeals(request):
 		actb = (float(obj.buy)-float(obj.sell)) / (float(obj.sell) + 3.99)
             amz = Amazon.objects.only('productcode', 'book').filter(pk=obj.amazon.productcode).get()
             bk = Book.objects.only('title').filter(pk=amz.book.pckey).get()
-	    dictItems[amz.productcode] = ("http://www.amazon.com/dp/" + amz.productcode,
+	    dictItems[amz.productcode] = (referer % (amz.productcode, amz.productcode),
                              bk.title,
                             float(obj.buy),
                             float(obj.sell),
                             float(obj.buy) - float(obj.sell),
-			    ctb, actb, obj.timestamp )
+			    ctb, actb, obj.timestamp, amz.productcode )
     
     return render_to_response('deals.html', {'dictItems': dictItems, 
                                              'totalIndexed': totalIndexed,
