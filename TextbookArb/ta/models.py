@@ -1,6 +1,7 @@
 from django.db import models
 from django.db.models.fields import CharField
 from django.db.models.fields.related import ForeignKey
+from django.db.models import F
 
 # Create your models here.
 
@@ -63,7 +64,21 @@ class Price(models.Model):
     buy = models.DecimalField(null=True,max_digits=8,decimal_places=2)
     sell = models.DecimalField(null=True,max_digits=8,decimal_places=2)
     timestamp = models.DateTimeField(auto_now_add=True)
+    last_timestamp = models.DateTimeField(auto_now=True)
     
 class Proxy(models.Model):
     proxy_type = models.CharField(max_length=10)
     ip_and_port = models.CharField(max_length=25)
+    
+class MetaTable(models.Model):
+    metakey = models.CharField(max_length=255, primary_key=True)
+    metatype = models.CharField(max_length=10)
+    string_field = models.CharField(max_length=255,null=True)
+    int_field = models.IntegerField(null=True)
+    float_field = models.FloatField(null=True)
+    
+class ProfitableBooks(models.Model):
+    price = models.ForeignKey('Price',primary_key=True)
+    buy = models.DecimalField(null=True,max_digits=8,decimal_places=2)
+    sell = models.DecimalField(null=True,max_digits=8,decimal_places=2)
+    

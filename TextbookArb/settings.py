@@ -18,15 +18,6 @@ DATABASES = {
         'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
         'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
     },
-             
-    'tadev': {
-        'ENGINE': 'django.db.backends.mysql', # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
-        'NAME': 'tadev',                      # Or path to database file if using sqlite3.
-        'USER': 'root',                      # Not used with sqlite3.
-        'PASSWORD': 'manganello1',                  # Not used with sqlite3.
-        'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
-        'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
-    }
 }
 
 # Local time zone for this installation. Choices can be found here:
@@ -194,10 +185,25 @@ BROKER_USER = "guest"
 BROKER_PASSWORD = "guest"
 BROKER_VHOST = "/"
 
-CELERYD_CONCURRENCY = 6 
+CELERYD_CONCURRENCY = 10 
 CELERY_RESULT_BACKEND = "amqp"
 CELERY_AMQP_TASK_RESULT_EXPIRES = 30  # 5 hours.
 CELERYD_MAX_TASKS_PER_CHILD = 3
 CELERYD_TASK_TIME_LIMIT = 180   
+
+from datetime import timedelta
+from celery.schedules import crontab
+
+CELERYBEAT_SCHEDULE = {
+    "runs-every-600-seconds": {
+        "task": "ta.tasks.updateBCs",
+        "schedule": timedelta(seconds=600),
+    },
+    # Executes every morning at 4am
+    "every-morning": {
+        "task": "ta.tasks.findNewBooks",
+        "schedule": crontab(hour=4, minute=0,),
+    },
+}
 
 #end django-celery

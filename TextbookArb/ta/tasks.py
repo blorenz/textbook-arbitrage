@@ -1,8 +1,5 @@
 from celery.task import TaskSet, task
-from amazon import addCategory
-from amazon import addProxy as ap
-from amazon import findBooks
-from amazon import detailBook
+from amazon import *
 from ta.models import Amazon_Textbook_Section, Amazon, Price, ATS_Middle
 
 from itertools import islice
@@ -70,9 +67,30 @@ def findTheBooks(url,i):
 def detailTheBook(am):
     detailBook(am)
     
-
+@task(name='ta.tasks.findNewBooks',ignore_result=True)
+def findNewBooks():
+    objs = Amazon.objects.values_list('productcode', flat=True)
+    tasks.process_lots_of_items(objs)
+              
+@task(name='ta.tasks.deleteExtraneousPrices',ignore_result=True)
+def deleteExtraneousPrices():
+    objs = Amazon.objects.all()
+    for obj in objs:
+        amz = Price.objects.filter(amazon=obj).order_by("-timestamp")
+        count = len(amz)
+        #print "Trying! " + str(count)
+        if count > 1:
+            for i in xrange(count-1,1,-1):
+                #print i
+                if (amz[i-1].buy == amz[i-2].buy) and (amz[i-1].sell == amz[i-2].sell):
+                    amz[i-1].delete()
+    
 @task(name='ta.tasks.doTheBooks',ignore_result=True)
 def doTheBooks(objs):
     for obj in objs:
         detailTheBook.delay(am)
         
+@task(name='ta.tasks.updateBCs',ignore_result=True)
+def updateBCs():
+    updateBookCounts() 
+    getProfitableBooks()

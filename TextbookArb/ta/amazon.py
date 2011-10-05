@@ -2,9 +2,11 @@ from lxml import html as lhtml
 from lxml import etree
 from lxml.html.clean import clean_html
 import requests
-from models import Amazon_Textbook_Section as ats, Proxy, Book, Amazon, Price, AmazonRankCategory, AmazonRank
+from models import Amazon_Textbook_Section as ats, ProfitableBooks, MetaTable, Proxy, Book, Amazon, Price, AmazonRankCategory, AmazonRank
 from django.db import IntegrityError
 import re
+from django.db.models import F
+
 
 def f7(seq):
     seen = set()
@@ -14,6 +16,8 @@ def f7(seq):
 def difference(a, b):
     return list(set(b).difference(set(a))) 
 
+
+    
 def retrievePage(url,proxy=None):
     
     if (proxy):
@@ -32,7 +36,32 @@ def importContent(url,content):
         a.save()
     except IntegrityError:
         print 'Tried to save a dupe'
-      
+  
+def createOrUpdateMetaField(keyvalue, value1):
+    try:
+        obj = MetaTable.objects.get(metakey=keyvalue)
+    except MetaTable.DoesNotExist:
+        obj = MetaTable(metakey=keyvalue,metatype="INTEGER")
+    obj.int_field = value1
+    obj.save()  
+
+def updateBookCounts():  
+    createOrUpdateMetaField("totalIndexed",Price.objects.values('amazon_id').distinct().count())
+    createOrUpdateMetaField("totalBooks",Amazon.objects.count())
+    createOrUpdateMetaField("totalProfitable",Price.objects.filter(buy__gte=F('sell')).values('amazon_id').distinct().count())
+    
+def deleteExtraneousPrices():
+	objs = Amazon.objects.all()
+	for obj in objs:
+	    amz = Price.objects.filter(amazon=obj).order_by("-timestamp")
+	    count = len(amz)
+	    if count > 1:
+	        for i in xrange(count-1,1,-1): 
+	            if (amz[i-1].buy == amz[i-2].buy) and (amz[i-1].sell == amz[i-2].sell):
+	                amz[i-1].delete()
+        #for row in amz:
+          #print "[%s] %s: buy %s sell %s at %s good for %s" % (row.id, row.amazon.productcode, row.buy, row.sell, row.timestamp, row.last_timestamp)
+        
 def addCategory(url):
     content = retrievePage(url,proxy=False)
     importContent(url,content)
@@ -40,7 +69,16 @@ def addCategory(url):
 def addProxy(type,proxy):
     p = Proxy(proxy_type=type,ip_and_port=proxy)
     p.save()
-                
+    
+def getProfitableBooks():
+     foo = Price.objects.raw('select * from ta_price a join ( select amazon_id, max(timestamp) ts from ta_price group by amazon_id) b on a.amazon_id = b.amazon_id and a.timestamp = b.ts AND buy > sell;')
+     #foo = Price.objects.raw('SELECT * FROM ( SELECT *, row_number() over (partition by amazon_id order by timestamp DESC) r from ta_price ) x where r = 1 AND buy > sell')
+     ProfitableBooks.objects.all().delete()
+     for f in iter(foo):
+         obj = ProfitableBooks(price=f,buy=f.buy,sell=f.sell)
+         obj.save()
+     
+      
 def findBooks(url,page):
     content = retrievePage(url + '&page=' + str(page))
     html = lhtml.fromstring(content)
@@ -238,7 +276,7 @@ def testit():
                     print matches.group(1)
             matches = re.match(r'Amazon Best Sellers Rank:\s+#([,\d]+) in [\w\s]+ \(',txt)
             if matches != None:
-                    print matches.group(1)
+                    print matches.group(1) 
 
 def testit2():
     url = 'http://www.amazon.com/Organizational-Behavior-Robert-Kreitner/dp/007353045X/ref=pd_sim_b6'

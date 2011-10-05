@@ -1,6 +1,6 @@
 # Create your views here.
 from django.shortcuts import render_to_response
-from ta.models import Amazon_Textbook_Section, Book, Amazon, Price, ATS_Middle
+from ta.models import Amazon_Textbook_Section, ProfitableBooks, Book, Amazon, Price, ATS_Middle, MetaTable
 from django.core.context_processors import csrf
 from django.http import HttpRequest, HttpResponse
 from celery.task.sets import TaskSet
@@ -34,7 +34,7 @@ def loginThing(request):
 def lazy(request):
     objs = Amazon.objects.values_list('productcode', flat=True).filter(productcode=request.GET['product'])
     tasks.process_lots_of_items(objs)
-    return HttpResponse("done")
+    return HttpResponse(request.GET['product'] + " : " + str(objs))
     
     
     
@@ -63,33 +63,35 @@ def getDeals(request):
       referer = 'http://www.amazon.com/gp/product/%s/ref=as_li_ss_tl?ie=UTF8&tag=deafordea-20&linkCode=as2&camp=217145&creative=399373&creativeASIN=%s'
     else:
       referer = 'http://www.amazon.com/gp/product/%s/ref=as_li_ss_tl?ie=UTF8&tag=ngre-20&linkCode=as2&camp=217145&creative=399373&creativeASIN=%s'
-    #totalIndexedL = Price.objects.raw('SELECT "ta_price"."id", COUNT(DISTINCT "ta_price"."amazon_id") AS thecount FROM "ta_price"')
-    #totalIndexed = totalIndexedL[0].thecount
-    totalIndexed = Price.objects.only('amazon_id').distinct().count()
-    #totalIndexedL = Price.objects.raw('select id, count(distinct amazon_id) AS thecount from ta_price')
-    #totalIndexed = totalIndexedL[0].thecount
-    
-    totalBooks = Amazon.objects.count()
-    totalProfitable = Price.objects.filter(buy__gte=F('sell')).values('amazon_id').distinct().count()
-   # foo = Price.objects.all().extra(where=['amazon_id IS NOT NULL']).distinct().filter(buy__gte=F('sell')+9)
-   # foo = Price.objects.raw('SELECT DISTINCT amazon_id, buy, sell FROM ta_price WHERE `ta_price`.`buy` >=  `ta_price`.`sell` + 9')
-    #foo = Price.objects.order_by('-timestamp').distinct().only('amazon', 'buy', 'sell', 'timestamp').filter(buy__gte=F('sell'))
-    foo = Price.objects.raw('SELECT * FROM ( SELECT *, row_number() over (partition by amazon_id order by timestamp DESC) r from ta_price ) x where r = 1 AND buy > sell + 9')
 
-    for obj in foo:
-	    ctb = 0
-	    actb = 0
-	    if (float(obj.sell) != 0):
-		ctb = (float(obj.buy)-float(obj.sell)) / float(obj.sell)
-		actb = (float(obj.buy)-float(obj.sell)) / (float(obj.sell) + 3.99)
-            amz = Amazon.objects.only('productcode', 'book').filter(pk=obj.amazon.productcode).get()
-            bk = Book.objects.only('title').filter(pk=amz.book.pckey).get()
-	    dictItems[amz.productcode] = (referer % (amz.productcode, amz.productcode),
-                             bk.title,
-                            float(obj.buy),
-                            float(obj.sell),
-                            float(obj.buy) - float(obj.sell),
-			    ctb, actb, obj.timestamp, amz.productcode )
+    totalIndexed = MetaTable.objects.get(metakey="totalIndexed").int_field
+    totalBooks = MetaTable.objects.get(metakey="totalBooks").int_field
+    totalProfitable = MetaTable.objects.get(metakey="totalProfitable").int_field
+
+    foo = ProfitableBooks.objects.all().values_list("price",flat=True)
+
+    objs = Price.objects.filter(pk__in=foo).values_list("buy","sell","amazon__productcode","amazon__book__title","timestamp")
+    
+    for obj in iter(objs):
+        ctb = 0
+        actb = 0
+        theBuy = float(obj[0])
+        theSell = float(obj[1])
+        
+        if (theSell != 0):
+            ctb = (theBuy-theSell) / theSell
+            actb = (theBuy-(theSell+3.99)) / (theSell+3.99) 
+            ctb = round(ctb * 100,2)
+            actb = round(actb * 100,2)
+            
+
+            productCode = obj[2]
+            dictItems[productCode] = (referer % (productCode, productCode),
+                                 obj[3],
+                                theBuy,
+                                theSell,
+                                theBuy - theSell,
+            	    ctb, actb, obj[4], productCode )
     
     return render_to_response('deals.html', {'dictItems': dictItems, 
                                              'totalIndexed': totalIndexed,
@@ -132,11 +134,13 @@ def defineCategories(request):
 
 
 def getOthers(request):
-     t = Amazon.objects.values_list('productcode', flat=True).distinct()
-     p = Price.objects.values_list('amazon_id', flat=True).distinct()
-     s = difference(p,t)
-     tasks.process_lots_of_items(s)
-     return HttpResponse("Created " + str(len(s)) + " tasks")# + str(t) + "<br><br><br>" + str(p)+ "<br><br><br>" + str(s))
+     #t = Amazon.objects.values_list('productcode', flat=True).distinct()
+     #p = Price.objects.values_list('amazon_id', flat=True).distinct()
+     #s = difference(p,t)
+     #tasks.process_lots_of_items(s)
+     tasks.deleteExtraneousPrices.delay()
+     return HttpResponse("ok!")
+     #return HttpResponse("Created " + str(len(s)) + " tasks")# + str(t) + "<br><br><br>" + str(p)+ "<br><br><br>" + str(s))
       
 def defineProxies(request):
     if request.method == 'POST':
