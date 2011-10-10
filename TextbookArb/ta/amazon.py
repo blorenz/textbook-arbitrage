@@ -2,10 +2,11 @@ from lxml import html as lhtml
 from lxml import etree
 from lxml.html.clean import clean_html
 import requests
-from models import Amazon_Textbook_Section as ats, ProfitableBooks, MetaTable, Proxy, Book, Amazon, Price, AmazonRankCategory, AmazonRank
+from models import Amazon_Textbook_Section as ats, ATS_Middle, ProfitableBooks, MetaTable, Proxy, Book, Amazon, Price, AmazonRankCategory, AmazonRank
 from django.db import IntegrityError
 import re
 from django.db.models import F
+import tasks
 
 
 def f7(seq):
@@ -29,6 +30,13 @@ def retrievePage(url,proxy=None):
     return r.content
 
 
+def getAllKnownA():   
+    foo = Price.objects.raw('SELECT id,amazon_id FROM ( SELECT *, row_number() over (partition by amazon_id order by timestamp DESC) r from ta_price ) x where r = 1 AND buy <> null')
+    f = []
+    for s in foo:
+        f.append(s.amazon_id)
+    tasks.process_lots_of_items(f) 
+    
 def importContent(url,content):
     html = lhtml.fromstring(content)
     a = ats(url=unicode(url).encode('ascii', 'ignore'),title = unicode(html.xpath("//*[@class='breadCrumb']")[0].text_content()).encode('ascii', 'ignore'))
@@ -48,7 +56,7 @@ def createOrUpdateMetaField(keyvalue, value1):
 def updateBookCounts():  
     createOrUpdateMetaField("totalIndexed",Price.objects.values('amazon_id').distinct().count())
     createOrUpdateMetaField("totalBooks",Amazon.objects.count())
-    createOrUpdateMetaField("totalProfitable",Price.objects.filter(buy__gte=F('sell')).values('amazon_id').distinct().count())
+    createOrUpdateMetaField("totalProfitable",ProfitableBooks.objects.all().count())
     
 def deleteExtraneousPrices():
 	objs = Amazon.objects.all()
@@ -71,14 +79,22 @@ def addProxy(type,proxy):
     p.save()
     
 def getProfitableBooks():
-     foo = Price.objects.raw('select * from ta_price a join ( select amazon_id, max(timestamp) ts from ta_price group by amazon_id) b on a.amazon_id = b.amazon_id and a.timestamp = b.ts AND buy > sell;')
+     foo = Price.objects.raw('SELECT * from ta_price a WHERE NOT EXISTS ( SELECT * FROM ta_price b WHERE b.amazon_id = a.amazon_id AND b.timestamp > a.timestamp ) AND a.buy > a.sell;')
      #foo = Price.objects.raw('SELECT * FROM ( SELECT *, row_number() over (partition by amazon_id order by timestamp DESC) r from ta_price ) x where r = 1 AND buy > sell')
      ProfitableBooks.objects.all().delete()
      for f in iter(foo):
          obj = ProfitableBooks(price=f,buy=f.buy,sell=f.sell)
          obj.save()
      
-      
+def getTheMiddle():
+    for cat in ats.objects.all():
+                 for i in range(1,101):
+                     ATS_Middle.objects.create(page=i,section=cat)
+                     
+def detailAllBooks():    
+    objs = Amazon.objects.values_list('productcode', flat=True)
+    tasks.process_lots_of_items(objs)
+    
 def findBooks(url,page):
     content = retrievePage(url + '&page=' + str(page))
     html = lhtml.fromstring(content)
@@ -246,7 +262,11 @@ def tic(url,page):
         
         print pc[0] + "  : " +  title[0].text
         
-        
+
+def lookForBooks():   
+    objs = ATS_Middle.objects.values_list('id', flat=True)      
+    process_lots_of_items_cats(objs) 
+                     
 def testit():
     url = 'http://www.amazon.com/Organizational-Behavior-Robert-Kreitner/dp/007353045X/ref=pd_sim_b6'
     content = retrievePage(url)

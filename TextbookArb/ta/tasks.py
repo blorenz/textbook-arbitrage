@@ -69,9 +69,16 @@ def detailTheBook(am):
     
 @task(name='ta.tasks.findNewBooks',ignore_result=True)
 def findNewBooks():
-    objs = Amazon.objects.values_list('productcode', flat=True)
-    tasks.process_lots_of_items(objs)
-              
+    detailAllBooks()
+
+@task(name='ta.tasks.updateProfitable',ignore_result=True)
+def updateProfitable():
+    ProfitableBooks.objects.values_list("price__amazon")
+     
+@task(name='ta.tasks.lookForNewBooks',ignore_result=True) 
+def lookForNewBooks():           
+    lookForBooks()
+    
 @task(name='ta.tasks.deleteExtraneousPrices',ignore_result=True)
 def deleteExtraneousPrices():
     objs = Amazon.objects.all()
