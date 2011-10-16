@@ -7,6 +7,7 @@ from django.db import IntegrityError
 import re
 from django.db.models import F
 import tasks
+from django.db import connection, transaction
 
 
 def f7(seq):
@@ -57,10 +58,9 @@ def updateBookCounts():
     createOrUpdateMetaField("totalIndexed",Price.objects.values('amazon_id').distinct().count())
     createOrUpdateMetaField("totalBooks",Amazon.objects.count())
     createOrUpdateMetaField("totalProfitable",ProfitableBooks.objects.all().count())
-    
-def deleteExtraneousPrices():
-	objs = Amazon.objects.all()
-	for obj in objs:
+
+def deleteExtraneousPricesWorker(objs):
+    for obj in objs:
 	    amz = Price.objects.filter(amazon=obj).order_by("-timestamp")
 	    count = len(amz)
 	    if count > 1:
@@ -69,7 +69,11 @@ def deleteExtraneousPrices():
 	                amz[i-1].delete()
         #for row in amz:
           #print "[%s] %s: buy %s sell %s at %s good for %s" % (row.id, row.amazon.productcode, row.buy, row.sell, row.timestamp, row.last_timestamp)
-        
+
+def deleteExtraneousPrices():
+	objs = Amazon.objects.all().values_list("productcode",flat=True)
+	process_lots_of_items_extra.delay(objs)   
+	     
 def addCategory(url):
     content = retrievePage(url,proxy=False)
     importContent(url,content)
@@ -79,12 +83,15 @@ def addProxy(type,proxy):
     p.save()
     
 def getProfitableBooks():
-     foo = Price.objects.raw('SELECT * from ta_price a WHERE NOT EXISTS ( SELECT * FROM ta_price b WHERE b.amazon_id = a.amazon_id AND b.timestamp > a.timestamp ) AND a.buy > a.sell;')
-     #foo = Price.objects.raw('SELECT * FROM ( SELECT *, row_number() over (partition by amazon_id order by timestamp DESC) r from ta_price ) x where r = 1 AND buy > sell')
-     ProfitableBooks.objects.all().delete()
-     for f in iter(foo):
-         obj = ProfitableBooks(price=f,buy=f.buy,sell=f.sell)
-         obj.save()
+    cursor = connection.cursor()
+    cursor.execute("SELECT * from ta_price a WHERE NOT EXISTS ( SELECT * FROM ta_price b WHERE b.amazon_id = a.amazon_id AND b.timestamp > a.timestamp ) AND a.buy > a.sell AND a.timestamp > '2011-10-13 09:23:54-04';")
+    rows = cursor.fetchall()
+    cursor.execute("TRUNCATE ta_profitablebooks")
+    transaction.commit_unless_managed()
+    with transaction.commit_on_success():
+     for f in iter(rows):
+      obj = ProfitableBooks(price=Price.objects.get(pk=f[0]),buy=f[2],sell=f[3])
+      obj.save()
      
 def getTheMiddle():
     for cat in ats.objects.all():
@@ -267,73 +274,41 @@ def lookForBooks():
     objs = ATS_Middle.objects.values_list('id', flat=True)      
     process_lots_of_items_cats(objs) 
                      
-def testit():
-    url = 'http://www.amazon.com/Organizational-Behavior-Robert-Kreitner/dp/007353045X/ref=pd_sim_b6'
-    content = retrievePage(url)
-    html = lhtml.fromstring(content)
-    s = html.xpath("//div[@class='qpHeadline']/..")
-    if len(s):
-        parseThis = s[0].text_content()
-        money = re.compile(r'\$?(\d*\.\d{2})')#e.g., $.50, .50, $1.50, $.5, .5
-        print parseThis
-        matches = re.findall(money, parseThis)
-        print matches
-        if len(matches) >= 2:
-            print matches[0]
-            print matches[1]
-    s = html.xpath("//td[@class='bucket']/div[@class='content']/ul/li")
-    for t in s:
-        i = t.xpath("script")
-        for j in i:
-            t.remove(j)
-        for u,t in enumerate(s):
-            txt = t.text_content().strip()
-            matches = re.match(r'ISBN-10: ([\d\w]+)',txt)
-            if matches != None:
-                print matches.group(1)
-            matches = re.match(r'ISBN-13: ([-\d\w]+)',txt)
-            if matches != None:
-                    print matches.group(1)
-            matches = re.match(r'Amazon Best Sellers Rank:\s+#([,\d]+) in [\w\s]+ \(',txt)
-            if matches != None:
-                    print matches.group(1) 
 
-def testit2():
-    url = 'http://www.amazon.com/Organizational-Behavior-Robert-Kreitner/dp/007353045X/ref=pd_sim_b6'
+def parseUsedPage(am):
+    url = 'http://www.amazon.com/gp/offer-listing/%s/ref=dp_olp_used?ie=UTF8&condition=used' % (am.productcode)
     content = retrievePage(url)
     html = lhtml.fromstring(content)
-    f = open('/tmp/text.html', 'w')
+    matches = re.search(r'Get a \$?(\d*\.\d{2}) Amazon.com Gift Card when you sell back your copy of this book.',html.text_content())
+    buyprice = None
+    if matches != None: 
+        buyprice = matches.group(1)
+        
+    results = html.xpath("//tbody[@class='result']")
+    
+    for result in results:
+        if re.search('Acceptable',result.cssselect('.condition')[0].text_content()):
+            continue
+        sellprice = re.match('\$?(\d*\.\d{2})',result.cssselect('.price')[0].text_content())
+        if sellprice != None and buyprice != None:
+            sellprice = sellprice.group(1)
+            print sellprice
+            print buyprice
+            price = Price(buy = buyprice, sell = sellprice, amazon = am)
+            price.save()
+        else:
+            price = Price(amazon = am)
+            price.save()      
+        #print result.cssselect('.condition')[0].text_content()
+        break
+         
+     
+def fetchPage(url):
+    content = retrievePage(url)
+    f = open('/virtualenvs/ta/ta/static/static/testing.html','w')
     f.write(content)
     f.close()
-    s = html.xpath("//td[@class='bucket']/div[@class='content']/ul/li")
-    for t in s:
-	i = t.xpath("script")
-	for j in i:
-		t.remove(j)
-    for u,t in enumerate(s):
-	txt = t.text_content().strip()
-	matches = re.match(r'ISBN-10: ([\d\w]+)',txt)
-	if matches != None:
-		print matches.group(1)
-	matches = re.match(r'ISBN-13: ([-\d\w]+)',txt)
-        if matches != None:
-                print matches.group(1)
-	matches = re.match(r'Amazon Best Sellers Rank:\s+#([,\d]+) in [\w\s]+ \(',txt)
-        if matches != None:
-                print matches.group(1)
-        
-        
-#    if len(s):
-#        parseThis = s[0].text_content()
-#        money = re.compile(r'\$?(\d*\.\d{2})')#e.g., $.50, .50, $1.50, $.5, .5
-#        print parseThis
-#        matches = re.findall(money, parseThis)
-#        print matches
-#        if len(matches) >= 2:
-#            print matches[0]
-#            print matches[1]
-           
-
+    
 def testthis():
     url = 'http://www.amazon.com/gp/search/ref=sr_ex_n_1?rh=n%3A283155%2Cn%3A%2144258011%2Cn%3A2205237011%2Cn%3A5&bbn=2205237011&ie=UTF8&qid=1317397002'
     url2= 'http://www.amazon.com/Programming-Objective-C-3rd-Developers-Library/dp/0321711394/ref=sr_1_32?ie=UTF8&s=textbooks-trade-in&qid=1317401882&sr=1-32'

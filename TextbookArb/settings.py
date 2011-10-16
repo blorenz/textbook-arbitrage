@@ -194,10 +194,34 @@ CELERYD_TASK_TIME_LIMIT = 600
 from datetime import timedelta
 from celery.schedules import crontab
 
+CELERY_QUEUES = {
+    "default": {
+        "exchange": "default",
+        "binding_key": "default"},
+    "quickqueue": {
+        "exchange": "quickq",
+        "exchange_type": "topic",
+        "binding_key": "quickq.quick", 
+    },
+}
+
+CELERY_ROUTES = (
+    {
+        "ta.tasks.updateBCs": {
+            "queue": "quickqueue"
+        },
+    },
+) 
+
+CELERY_DEFAULT_QUEUE = "default"
+CELERY_DEFAULT_EXCHANGE = "default"
+CELERY_DEFAULT_EXCHANGE_TYPE = "direct"
+CELERY_DEFAULT_ROUTING_KEY = "default"
+
 CELERYBEAT_SCHEDULE = {
     "runs-every-600-seconds": {
         "task": "ta.tasks.updateBCs",
-        "schedule": timedelta(seconds=600),
+        "schedule": timedelta(seconds=180),
     },
     # Executes every morning at 4am
     "every-morning": {

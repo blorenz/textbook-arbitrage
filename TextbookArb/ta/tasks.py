@@ -19,7 +19,8 @@ def process_chunk(pks,ignore_result=True):
     objs = Amazon.objects.filter(pk__in=pks)
     print str(len(objs))
     for obj in objs:
-        detailBook(obj)
+        #detailBook(obj)
+        parseUsedPage(obj)
 
 @task(name='ta.tasks.process_lots_of_items')
 def process_lots_of_items(ids_to_process):
@@ -44,6 +45,17 @@ def process_lots_of_items_cats(ids_to_process):
                                            5)).apply_async()
                                            
 
+@task(name='ta.tasks.process_chunk_extra')
+def process_chunk_extra(pks,ignore_result=True):
+    objs = Amazon.objects.filter(pk__in=pks)
+    deleteExtraneousPricesWorker(objs)
+
+@task(name='ta.tasks.process_lots_of_items_extra')
+def process_lots_of_items_extra(ids_to_process):
+    return TaskSet(process_chunk.subtask((chunk, ))
+                       for chunk in chunks(iter(ids_to_process),
+                                           25)).apply_async()
+                                           
 @task(name='ta.tasks.addCat',ignore_result=True)
 def addCat(x):
     addCategory(x)
@@ -65,7 +77,7 @@ def findTheBooks(url,i):
 
 @task(name='ta.tasks.detailTheBook',ignore_result=True)
 def detailTheBook(am):
-    detailBook(am)
+    parseUsedPage(am)
     
 @task(name='ta.tasks.findNewBooks',ignore_result=True)
 def findNewBooks():
@@ -96,7 +108,16 @@ def deleteExtraneousPrices():
 def doTheBooks(objs):
     for obj in objs:
         detailTheBook.delay(am)
-        
+  
+@task(name='ta.tasks.doKnown',ignore_result=True)   
+def doKnown():   
+    foo = Price.objects.raw('SELECT id,amazon_id from ta_price a WHERE NOT EXISTS ( SELECT * FROM ta_price b WHERE b.amazon_id = a.amazon_id AND b.timestamp > a.timestamp ) AND a.buy > a.sell')
+    #SELECT id,amazon_id FROM ( SELECT *, row_number() over (partition by amazon_id order by timestamp DESC) r from ta_price ) x where r = 1 AND buy > sell')
+    f = []
+    for s in foo:
+        f.append(s.amazon_id)
+    tasks.process_lots_of_items(f)    
+    
 @task(name='ta.tasks.updateBCs',ignore_result=True)
 def updateBCs():
     updateBookCounts() 

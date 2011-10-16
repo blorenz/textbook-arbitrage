@@ -9,6 +9,7 @@ import tasks
 from amazon import f7, difference
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+import json
 
 def loginThing(request):
     if request.method == 'POST':
@@ -37,15 +38,34 @@ def lazy(request):
     return HttpResponse(request.GET['product'] + " : " + str(objs))
     
     
+def getHistoricalPrices(request):
+    amz_code = request.GET['amazoncode']
+    foo = Price.objects.raw("SELECT id,buy,sell,timestamp from ta_price a WHERE a.amazon_id = '" + amz_code + "' ORDER BY a.timestamp ASC")
+    output = []
+    lastprice = -1
+    
+    if request.GET['type'] == 'buy':
+        for s in foo:
+            if not s.buy:
+                s.buy = 0.0
+            
+            if s.buy != lastprice:   
+                output.append((s.timestamp.isoformat(' '), float(s.buy)))
+            lastprice = s.buy
+    else:
+        for s in foo:
+            if not s.sell:
+                s.sell = 0.0
+            if s.sell != lastprice:
+                output.append((s.timestamp.isoformat(' '), float(s.sell)))
+            lastprice = s.sell
     
     
-def getKnown(request):   
-    foo = Price.objects.raw('SELECT id,amazon_id FROM ( SELECT *, row_number() over (partition by amazon_id order by timestamp DESC) r from ta_price ) x where r = 1 AND buy > sell')
-    f = []
-    for s in foo:
-        f.append(s.amazon_id)
-    tasks.process_lots_of_items(f)    
-    return HttpResponse('Doing so for %d for %s' % (len(f), str(f)))
+    return HttpResponse(json.dumps(output))
+    
+def getKnown(request):
+    tasks.doKnown()
+    return HttpResponse('Did it!')
     
 def getAllKnown(request):   
     foo = Price.objects.raw('SELECT id,amazon_id FROM ( SELECT *, row_number() over (partition by amazon_id order by timestamp DESC) r from ta_price ) x where r = 1 AND buy <> null')
