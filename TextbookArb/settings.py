@@ -18,6 +18,10 @@ DATABASES = {
         'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
         'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
     },
+    'mongo' : {
+      'ENGINE' : 'django_mongodb_engine',
+      'NAME' : 'ta_database'
+   }
 }
 
 # Local time zone for this installation. Choices can be found here:
@@ -130,7 +134,7 @@ INSTALLED_APPS = (
     # Uncomment the next line to enable admin documentation:
     'django.contrib.admindocs',
     'ta',
-    'south',
+    #'south',
     'gunicorn',
     'debug_toolbar',
 )
@@ -227,6 +231,11 @@ CELERYBEAT_SCHEDULE = {
     "every-morning": {
         "task": "ta.tasks.findNewBooks",
         "schedule": crontab(hour=2, minute=30,),
+    },
+    # Executes every morning at 4am
+    "every-morning3": {
+        "task": "ta.tasks.findNewBooks",
+        "schedule": crontab(hour=12, minute=00,),
     },
     "every-morning2": {
         "task": "ta.tasks.lookForNewBooks",

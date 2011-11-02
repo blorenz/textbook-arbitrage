@@ -69,18 +69,7 @@ $(document).ready(function(){
 		 	 
 		 });
 
-$("td.links a:first-child").colorbox({width:"90%", height:"90%", iframe:true}); 
- $('#results').dataTable({
-	//"sPaginationType": "full_numbers",
-        "aaSorting": [[ 5, "desc" ]],
-	"bScrollInfinite": true,
-        "bScrollCollapse": true,
-        "sScrollY": "400px"
-    });
-
- 	
-
-    $(".historicalBuy").click(function() {
+ $(".historicalBuy").click(function() {
 		var $el = $(this);
 		$.ajax({
 				type: "GET",
@@ -115,6 +104,20 @@ cursor:{
 	});
 	});
 
+
+$("td.links a:first-child").colorbox({width:"90%", height:"90%", iframe:true}); 
+ $('#results').dataTable({
+	//"sPaginationType": "full_numbers",
+        "aaSorting": [[ 5, "desc" ]],
+	"bScrollInfinite": true,
+        "bScrollCollapse": true,
+        "sScrollY": "300px"
+    });
+
+ 	
+
+   
+
     $("#getlatest").click(function(){
 	
 	$.ajax({
@@ -124,7 +127,7 @@ cursor:{
 				$('#getlatestspan').empty().show().html("Getting Latest! Please Wait Until I Disappear...");
 			},
 			success: function() {
-				$('#getlatestspan').empty().html("Got Latest!").delay(2000).fadeOut(200).empty();
+				$('#getlatestspan').empty().html("Got Latest!").fadeOut('slow').empty();
 				}
 			// Add success function
 		 });	

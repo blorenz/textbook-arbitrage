@@ -64,7 +64,7 @@ def getHistoricalPrices(request):
     return HttpResponse(json.dumps(output))
     
 def getKnown(request):
-    tasks.doKnown()
+    tasks.doKnown.delay()
     return HttpResponse('Did it!')
     
 def getAllKnown(request):   

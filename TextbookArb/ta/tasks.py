@@ -17,7 +17,7 @@ def process_chunk(pks,ignore_result=True):
  #       f.write(str(i)) 
  #   f.close()
     objs = Amazon.objects.filter(pk__in=pks)
-    print str(len(objs))
+    #print str(len(objs))
     for obj in objs:
         #detailBook(obj)
         parseUsedPage(obj)
@@ -52,7 +52,7 @@ def process_chunk_extra(pks,ignore_result=True):
 
 @task(name='ta.tasks.process_lots_of_items_extra')
 def process_lots_of_items_extra(ids_to_process):
-    return TaskSet(process_chunk.subtask((chunk, ))
+    return TaskSet(process_chunk_extra.subtask((chunk, ))
                        for chunk in chunks(iter(ids_to_process),
                                            25)).apply_async()
                                            

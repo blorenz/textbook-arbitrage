@@ -8,6 +8,48 @@ import re
 from django.db.models import F
 import tasks
 from django.db import connection, transaction
+import chilkat
+import sys
+
+# JINGWEMAILQ_tp6gXy5G9RoQ - mail
+
+def mail():
+    #  The mailman object is used for receiving (POP3)
+    #  and sending (SMTP) email.
+    mailman = chilkat.CkMailMan()
+    
+    #  Any string argument automatically begins the 30-day trial.
+    success = mailman.UnlockComponent("JINGWEMAILQ_tp6gXy5G9RoQ")
+    if (success != True):
+        print "Component unlock failed"
+        sys.exit()
+    
+    #  Set the GMail account POP3 properties.
+    mailman.put_MailHost("pop.gmail.com")
+    mailman.put_PopUsername("michaelbamazon")
+    mailman.put_PopPassword("colonel1")
+    mailman.put_PopSsl(True)
+    mailman.put_MailPort(995)
+    
+    #  Read mail headers and one line of the body.
+    #  To get the full emails, call CopyMail instead (no arguments)
+    # bundle is a CkEmailBundle
+    bundle = mailman.CopyMail()
+    
+    if (bundle == None ):
+        print mailman.lastErrorText()
+        sys.exit()
+    
+    s = 0
+    print str(bundle.get_MessageCount())
+    for i in range(0,bundle.get_MessageCount()):
+        # email is a CkEmail
+        email = bundle.GetEmail(i)
+        #  Display the From email address and the subject.
+        matches = re.findall("Amazon", email.ck_from())
+        if len(matches):
+            print email.ck_from()
+            s += 1
 
 
 def f7(seq):
@@ -44,7 +86,7 @@ def importContent(url,content):
     try:
         a.save()
     except IntegrityError:
-        print 'Tried to save a dupe'
+        pass#print 'Tried to save a dupe'
   
 def createOrUpdateMetaField(keyvalue, value1):
     try:
@@ -70,9 +112,11 @@ def deleteExtraneousPricesWorker(objs):
         #for row in amz:
           #print "[%s] %s: buy %s sell %s at %s good for %s" % (row.id, row.amazon.productcode, row.buy, row.sell, row.timestamp, row.last_timestamp)
 
-def deleteExtraneousPrices():
-	objs = Amazon.objects.all().values_list("productcode",flat=True)
-	process_lots_of_items_extra.delay(objs)   
+def deleteExtraneousPricesAM():
+	print 'Going for it!'
+	objs = Amazon.objects.values_list("productcode",flat=True)
+	print 'Got objects'
+	tasks.process_lots_of_items_extra.delay(objs)   
 	     
 def addCategory(url):
     content = retrievePage(url,proxy=False)
@@ -119,7 +163,7 @@ def findBooks(url,page):
             try:
                 b.save()
             except IntegrityError:
-                print 'Tried to save a dupe 1'
+                pass#print 'Tried to save a dupe 1'
         else:
             b = b[0]
           
@@ -127,7 +171,7 @@ def findBooks(url,page):
         try:
             s.save()
         except IntegrityError:
-            print 'Tried to save a dupe 2'
+            pass#print 'Tried to save a dupe 2'
         
 def detailBook(am):
     '''Grabs the details of a book page including Buy, Sell, Rank, ISBN'''
@@ -147,7 +191,7 @@ def detailBook(am):
             #print("Price buy %s and sell %s for %s" % (matches[0],matches[1],am.book.title))
     else:
         price = Price(amazon = am)
-        print "not Ranked"
+        #print "not Ranked"
         price.save()
     	
     s = html.xpath("//td[@class='bucket']/div[@class='content']/ul/li")
@@ -174,7 +218,7 @@ def detailBook(am):
             rankNoComma = re.sub(",","",matches.group(1))
             rankCategory = matches.group(2)
                 
-    print ("ISBN %s and IBSN-10 %s and rank is %s in %s" % (am.book.isbn, am.book.isbn10, rankNoComma, rankCategory))
+    #print ("ISBN %s and IBSN-10 %s and rank is %s in %s" % (am.book.isbn, am.book.isbn10, rankNoComma, rankCategory))
     am.book.save() 
     arc = AmazonRankCategory.objects.filter(category = rankCategory)
     if len(arc) == 0:
@@ -209,7 +253,7 @@ def countBooksInCategory(url):
   
     if len(s):
         txt = s[0].text_content().strip()
-        print txt 
+        #print txt 
         matches = re.search(r'of\s+([,\d]+) Results',txt)
         
         if matches != None:
@@ -240,7 +284,7 @@ def getBooksOnTradeinPage(url,page):
             try:
                 b.save()
             except IntegrityError:
-                print 'Tried to save a dupe 1'
+                pass#print 'Tried to save a dupe 1'
         else:
             b = b[0]
           
@@ -248,7 +292,7 @@ def getBooksOnTradeinPage(url,page):
         try:
             s.save()
         except IntegrityError:
-            print 'Tried to save a dupe 2'
+            pass#print 'Tried to save a dupe 2'
         
 def tic(url,page):  
     '''Gets all the books on the tradein page'''
@@ -292,8 +336,8 @@ def parseUsedPage(am):
         sellprice = re.match('\$?(\d*\.\d{2})',result.cssselect('.price')[0].text_content())
         if sellprice != None and buyprice != None:
             sellprice = sellprice.group(1)
-            print sellprice
-            print buyprice
+            #print sellprice
+            #print buyprice
             price = Price(buy = buyprice, sell = sellprice, amazon = am)
             price.save()
         else:

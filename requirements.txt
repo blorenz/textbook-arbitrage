@@ -14,3 +14,6 @@ lxml
 requests
 django-celery
 psycopg
+hg+https://bitbucket.org/wkornewald/django-nonrel
+hg+https://bitbucket.org/wkornewald/djangotoolbox
+git+https://github.com/django-mongodb-engine/mongodb-engine
