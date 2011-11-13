@@ -65,18 +65,6 @@ def getHistoricalPrices(request):
     
     return HttpResponse(json.dumps(output))
     
-def getKnown(request):
-    tasks.doKnownAllTrades.delay()
-    return HttpResponse('Did it!')
-    
-def getAllKnown(request):
-    return
-    foo = Price.objects.raw('SELECT id,amazon_id FROM ( SELECT *, row_number() over (partition by amazon_id order by timestamp DESC) r from ta_price ) x where r = 1 AND buy <> null')
-    f = []
-    for s in foo:
-        f.append(s.amazon_id)
-    tasks.process_lots_of_items(f)    
-    return HttpResponse('Doing so for %d' % (len(f), ))
 
 @login_required(login_url='/login/')
 def getDeals(request):
@@ -92,7 +80,7 @@ def getDeals(request):
     totalProfitable = MetaTable_NR.objects.get(metakey="totalProfitable").int_field
 
     #objs = ProfitableBooks_NR.objects.all()
-    objs = AmazonMongo.objectsa.raw_query({'latest_price.buy': {'$gt': 0}})
+    objs = AmazonMongo.objects.raw_query({'latest_price.buy': {'$gt': 0}})
     #objs = Price.objects.filter(pk__in=foo).values_list("buy","sell","amazon__productcode","amazon__book__title","timestamp")
     
     for obj in iter(objs):
@@ -138,50 +126,10 @@ def defineCategories(request):
             urls = request.POST.get('categories').strip().split()
             for url in urls:
                 tasks.addCat.delay(url)
-                tasks.addCat.delay(url + "&sort=pricerank")
-                tasks.addCat.delay(url + "&sort=inversepricerank")
-                tasks.addCat.delay(url + "&sort=daterank")
-                tasks.addCat.delay(url + "&sort=reviewrank_authority")
-            return HttpResponse(str(len(urls)))
-        else:
-            for cat in Amazon_Textbook_Section.objects.all():
-                 for i in range(1,101):
-                     ATS_Middle.objects.create(page=i,section=cat)
-                     #tasks.findTheBooks.delay(cat.url,i)
-            return HttpResponse('Done!')
+            return HttpResponse("Added all urls!")
+        return HttpResponse("Nothing to do.")
     else:
         c = {}
         c.update(csrf(request))
        # latest_poll_list = Poll.objects.all().order_by('-pub_date')[:5]
         return render_to_response('defineCategories.html',c)
-
-
-def getOthers(request):
-     #t = Amazon.objects.values_list('productcode', flat=True).distinct()
-     #p = Price.objects.values_list('amazon_id', flat=True).distinct()
-     #s = difference(p,t)
-     #tasks.process_lots_of_items(s)
-     tasks.deleteExtraneousPrices.delay()
-     return HttpResponse("ok!")
-     #return HttpResponse("Created " + str(len(s)) + " tasks")# + str(t) + "<br><br><br>" + str(p)+ "<br><br><br>" + str(s))
-      
-def defineProxies(request):
-    if request.method == 'POST':
-        if (request.POST.get('proxies')):
-            urls = request.POST.get('proxies').strip().split()
-            for url in urls:
-                tasks.addProxy.delay('http',url)
-            return HttpResponse(str(len(urls)))
-        else:
-            objs = Amazon.objects.values_list('productcode', flat=True)
-            
-            tasks.process_lots_of_items(objs)
-
-            
-            return HttpResponse("Created " + str(len(objs)) + " tasks (but didn't execute)")
-            #tasks.doBooks.delay(objs)
-    else:
-        c = {}
-        c.update(csrf(request))
-       # latest_poll_list = Poll.objects.all().order_by('-pub_date')[:5]
-        return render_to_response('defineProxies.html',c)

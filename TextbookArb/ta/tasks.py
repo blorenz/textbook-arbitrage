@@ -111,7 +111,7 @@ def process_lots_of_items_extra(ids_to_process):
                                            
 @task(name='ta.tasks.addCat',ignore_result=True)
 def addCat(x):
-    addCategory(x)
+    addCategoryToScan(x)
 
 
 @task(name='ta.tasks.addProxy',ignore_result=True)

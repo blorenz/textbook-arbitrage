@@ -2,7 +2,7 @@ from lxml import html as lhtml
 from lxml import etree
 from lxml.html.clean import clean_html
 import requests
-from models import AmazonMongo, Amazon_NR, Price_NR, Book_NR, ProfitableBooks_NR, MetaTable_NR
+from models import AmazonMongo, AmazonMongoTradeIn, Amazon_NR, Price_NR, Book_NR, ProfitableBooks_NR, MetaTable_NR
 from django.db import IntegrityError
 import re
 from django.db.models import F
@@ -74,13 +74,6 @@ def retrievePage(url,proxy=None):
         r = requests.get(url)
     return r.content
 
-
-def getAllKnownA():   
-    foo = Price.objects.raw('SELECT id,amazon_id FROM ( SELECT *, row_number() over (partition by amazon_id order by timestamp DESC) r from ta_price ) x where r = 1 AND buy <> null')
-    f = []
-    for s in foo:
-        f.append(s.amazon_id)
-    tasks.process_lots_of_items(f) 
     
 def importContent(url,content):
     html = lhtml.fromstring(content)
@@ -140,14 +133,7 @@ def checkProfitable(a):
             b.price = price
             b.timestamp = price.timestamp
             b.save()
-    
-   
-def nullTimes(a):
-    if not a.prices[-1].timestamp:
-        a.prices[-1].timestamp = datetime.now
-        a.prices[-1].last_timestamp = datetime.now
-        a.save()
-        
+            
        
     
 def getProfitableBooks():
@@ -155,110 +141,17 @@ def getProfitableBooks():
     objs = AmazonMongo.objects.values_list('id',flat=True)
     tasks.process_lots_of_items_profitable.delay(objs)
     
-#    cursor = connection.cursor()
-#    cursor.execute("SELECT * from ta_price a WHERE NOT EXISTS ( SELECT * FROM ta_price b WHERE b.amazon_id = a.amazon_id AND b.timestamp > a.timestamp ) AND a.buy > a.sell AND a.timestamp > '2011-10-13 09:23:54-04';")
-#    rows = cursor.fetchall()
-#    cursor.execute("TRUNCATE ta_profitablebooks")
-#    transaction.commit_unless_managed()
-#    with transaction.commit_on_success():
-#     for f in iter(rows):
-#      obj = ProfitableBooks(price=Price.objects.get(pk=f[0]),buy=f[2],sell=f[3])
-#      obj.save()
      
 def getTheMiddle():
     for cat in ats.objects.all():
                  for i in range(1,101):
-                     ATS_Midd
-                     le.objects.create(page=i,section=cat)
+                     ATS_Middle.objects.create(page=i,section=cat)
                      
 def detailAllBooks():    
     objs = AmazonMongo.objects.values_list('id', flat=True)
     tasks.process_lots_of_items.delay(objs)
-    
-def findBooks(url,page):
-    content = retrievePage(url + '&page=' + str(page))
-    html = lhtml.fromstring(content)
-    section = ats.objects.get(url=url)
-    for table in html.xpath("//table[@class='n2']"):
-        aa = table.cssselect("td.dataColumn a")
-        title = table.cssselect(".srTitle")
-        re_product_code = re.compile(r'/dp/(.*?)/')
-        pc = re.findall(re_product_code,aa[0].get('href'))
-        
-        b = Book.objects.filter(pckey=pc)
-        
-        if len(b) == 0:
-            b = Book(pckey=pc,section = section, title = unicode(title[0].text).encode('ascii', 'ignore'))
-            try:
-                b.save()
-            except IntegrityError:
-                pass#print 'Tried to save a dupe 1'
-        else:
-            b = b[0]
-          
-        s = Amazon(book = b,productcode=pc[0])
-        try:
-            s.save()
-        except IntegrityError:
-            pass#print 'Tried to save a dupe 2'
-        
-def detailBook(am):
-    '''Grabs the details of a book page including Buy, Sell, Rank, ISBN'''
-    content = retrievePage('http://www.amazon.com/dp/' + am.productcode)
-    html = lhtml.fromstring(content)
-    s = html.xpath("//div[@class='qpHeadline']/..")
-    ###sqlQuery = "SELECT * FROM ( SELECT *, row_number() over (partition by amazon_id order by timestamp DESC) r from ta_price ) x where r = 1 AND amazon_id = '" + am.productcode + "' LIMIT 1";
-    ###foo = Price.objects.raw(sqlQuery)
-    if len(s):
-        parseThis = s[0].text_content()
-        money = re.compile(r'\$?(\d*\.\d{2})')#e.g., $.50, .50, $1.50, $.5, .5
-        matches = re.findall(money, parseThis)
-        if len(matches) >= 2:
-            price = Price(buy = matches[0], sell = matches[1], amazon = am)
-            price.save()
-            #print "Ranked"
-            #print("Price buy %s and sell %s for %s" % (matches[0],matches[1],am.book.title))
-    else:
-        price = Price(amazon = am)
-        #print "not Ranked"
-        price.save()
-    	
-    s = html.xpath("//td[@class='bucket']/div[@class='content']/ul/li")
-    rankCategory = "None"
-    rankNoComma = "0"
-    
-    for t in s:
-        i = t.xpath("script")
-        for j in i:
-            t.remove(j)
-        #for u,t in enumerate(s):
-        txt = t.text_content().strip()
-        
-        matches = re.match(r'ISBN-10: ([\d\w]+)',txt)
-        if matches != None:
-            am.book.isbn10 = matches.group(1)
-       
-        matches = re.match(r'ISBN-13: ([-\d\w]+)',txt)
-        if matches != None:
-            am.book.isbn = matches.group(1)
-        
-        matches = re.match(r'Amazon Best Sellers Rank:\s+#([,\d]+) in ([\w\s]+) \(',txt)
-        if matches != None:
-            rankNoComma = re.sub(",","",matches.group(1))
-            rankCategory = matches.group(2)
-                
-    #print ("ISBN %s and IBSN-10 %s and rank is %s in %s" % (am.book.isbn, am.book.isbn10, rankNoComma, rankCategory))
-    am.book.save() 
-    arc = AmazonRankCategory.objects.filter(category = rankCategory)
-    if len(arc) == 0:
-        arc = AmazonRankCategory(category=rankCategory)
-        arc.save()
-    else:
-        arc = arc[0]
-    #print arc
-    ar = AmazonRank(amazon = am, rank = int(rankNoComma), category = arc)
-    ar.save()
-        
+
+
 '''
    New Detail book:
    
@@ -292,57 +185,48 @@ def countBooksInCategory(url):
     
 def getBooksOnTradeinPage(url,page):
     '''Gets all the books on the tradein page'''
-    content = retrievePage(url + "page=" + str(page))
-    html = lhtml.fromstring(content)
-    #st = open('/virtualenvs/ta/ta/static/static/testing.html','w')
-    #st.write(content)
-    #st.close()
-    
-    s = html.xpath("//div[contains(concat(' ',normalize-space(@class),' '),' result ')]")
-  
-    for result in s:
-        aa = table.cssselect("td.dataColumn a")
-        title = table.cssselect(".srTitle")
-        re_product_code = re.compile(r'/dp/(.*?)/')
-        pc = re.findall(re_product_code,aa[0].get('href'))
-        
-        b = Book.objects.filter(pckey=pc)
-        
-        if len(b) == 0:
-            b = Book(pckey=pc,section = section, title = unicode(title[0].text).encode('ascii', 'ignore'))
-            try:
-                b.save()
-            except IntegrityError:
-                pass#print 'Tried to save a dupe 1'
-        else:
-            b = b[0]
-          
-        s = Amazon(book = b,productcode=pc[0])
-        try:
-            s.save()
-        except IntegrityError:
-            pass#print 'Tried to save a dupe 2'
-        
-def tic(url,page):  
-    '''Gets all the books on the tradein page'''
-    print 'Going to page: ' + str(page)
     content = retrievePage(url + "&page=" + str(page))
     html = lhtml.fromstring(content)
-    st = open('/virtualenvs/ta/ta/static/static/testing.html','w')
-    st.write(content)
-    st.close()
     
-    s = html.xpath("//table[@class='n2']")
+#    file = open('/tmp/testing.html','w')
+#    file.write(content)
+#    file.close()
+    
+    s = html.xpath("//td[@class='dataColumn']")
   
-    for table in s:
-        aa = table.cssselect("td.dataColumn a")
-        title = table.cssselect(".srTitle")
+    for result in s:
+        aa = result.cssselect("a")
+        title = result.cssselect(".srTitle")
         re_product_code = re.compile(r'/dp/(.*?)/')
         pc = re.findall(re_product_code,aa[0].get('href'))
         
-        print pc[0] + "  : " +  title[0].text
+        am = AmazonMongoTradeIn()
         
-
+        b = Book_NR()
+        b.pckey = pc[0]
+        b.title = title[0].text
+        
+        a = Amazon_NR()
+        a.book = b
+        a.productcode = pc[0]
+        am.amazon = a
+        
+        price = Price_NR()      
+        am.latest_price = price
+        
+        am.save()
+        
+        
+def addCategoryToScan(url):
+    content = retrievePage(url)
+    html = lhtml.fromstring(content)
+    s = html.xpath("//h1[@class='breadCrumb']")
+    ats = Amazon_Textbook_Section_NR(title=s[0].text,url=url)
+    ats.save()
+    
+def scanCategoryAndAddBooks(cat):
+    pass
+    
 def lookForBooks():   
     objs = ATS_Middle.objects.values_list('id', flat=True)      
     process_lots_of_items_cats(objs) 
@@ -393,51 +277,6 @@ def testthis():
     for i in range(100):
     	tic(url,i)
     
-def convertBooks():
-    amz = Amazon.objects.all()
-    
-    for a in amz:
-       
-        am = AmazonMongo()
-        
-        bk = Book_NR()
-        ama = Amazon_NR()
-        
-        bk.pckey = a.book.pckey
-        bk.title = a.book.title
-        bk.isbn = a.book.isbn
-        bk.isbn10 = a.book.isbn10
-        bk.author = a.book.author
-        ama.book = bk
-        ama.productcode = a.productcode
-        ama.timestamp = a.timestamp
-        
-        prices = Price.objects.filter(amazon=a).order_by('timestamp')
-        
-        plist = []
-
-        for p in prices:
-            newPrice = Price_NR()
-            if p.buy:
-                newPrice.buy = float(p.buy)
-            else:
-                newPrice.buy = p.buy
-            
-            if p.sell:
-                newPrice.sell = float(p.sell)
-            else:
-                newPrice.sell = p.sell
-                
-            newPrice.timestamp = p.timestamp
-            newPrice.last_timestamp = p.last_timestamp
-            plist.append(newPrice)
-
-        am.prices = plist
-            
-        
-        
-        am.amazon = ama
-        am.save()
   
 def convertAllBooks():
     amz = Amazon.objects.all().values_list("productcode",flat=True)

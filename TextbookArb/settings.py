@@ -235,7 +235,7 @@ CELERYBEAT_SCHEDULE = {
     # Executes every morning at 4am
     "every-morning": {
         "task": "ta.tasks.findNewBooks",
-        "schedule": crontab(hour=2, minute=30,),
+        "schedule": crontab(hour="*/12"),
     },
     # Executes every morning at 4am
     #"every-morning3": {
