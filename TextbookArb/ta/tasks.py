@@ -1,6 +1,6 @@
 from celery.task import TaskSet, task
 from amazon import *
-from ta.models import Amazon_Textbook_Section, Amazon, Price, ATS_Middle
+from ta.models import AmazonMongo
 
 from itertools import islice
 
@@ -12,6 +12,58 @@ def chunks(it, n):
 
 @task(name='ta.tasks.process_chunk')
 def process_chunk(pks,ignore_result=True):
+    #objs = Amazon_NR.objects.filter(pk__in=pks)
+    for p in pks:
+        print p
+        objs = AmazonMongo.objects.filter(pk=p)
+        #print str(len(objs))
+        for obj in objs:
+            #detailBook(obj)
+            parseUsedPage(obj)
+
+@task(name='ta.tasks.process_lots_of_items')
+def process_lots_of_items(ids_to_process):
+    return TaskSet(process_chunk.subtask((chunk, ))
+                       for chunk in chunks(iter(ids_to_process),
+                                           25)).apply_async()
+
+
+
+@task(name='ta.tasks.process_chunk_profitable')
+def process_chunk_profitable(pks,ignore_result=True):
+    #objs = Amazon_NR.objects.filter(pk__in=pks)
+    for p in pks:
+        objs = AmazonMongo.objects.filter(pk=p)
+        #print str(len(objs))
+        for obj in objs:
+            #detailBook(obj)
+            checkProfitable(obj)
+
+@task(name='ta.tasks.process_lots_of_items_profitable')
+def process_lots_of_items_profitable(ids_to_process):
+    return TaskSet(process_chunk_profitable.subtask((chunk, ))
+                       for chunk in chunks(iter(ids_to_process),
+                                           25)).apply_async()
+                                           
+                                           
+@task(name='ta.tasks.process_chunk_nulltimes')
+def process_chunk_nulltimes(pks,ignore_result=True):
+    #objs = Amazon_NR.objects.filter(pk__in=pks)
+    for p in pks:
+        objs = AmazonMongo.objects.filter(pk=p)
+        #print str(len(objs))
+        for obj in objs:
+            #detailBook(obj)
+            nullTimes(obj)
+
+@task(name='ta.tasks.process_lots_of_items_nulltimes')
+def process_lots_of_items_nulltimes(ids_to_process):
+    return TaskSet(process_chunk_nulltimes.subtask((chunk, ))
+                       for chunk in chunks(iter(ids_to_process),
+                                           25)).apply_async()
+                                           
+@task(name='ta.tasks.process_chunk_convert')
+def process_chunk_convert(pks,ignore_result=True):
  #   f = open('/tmp/stuff-' + str(pks[0]) + '.txt', 'w')
  #   for i in pks:
  #       f.write(str(i)) 
@@ -20,14 +72,15 @@ def process_chunk(pks,ignore_result=True):
     #print str(len(objs))
     for obj in objs:
         #detailBook(obj)
-        parseUsedPage(obj)
+        print obj
+        convertBook(obj)
 
-@task(name='ta.tasks.process_lots_of_items')
-def process_lots_of_items(ids_to_process):
-    return TaskSet(process_chunk.subtask((chunk, ))
+@task(name='ta.tasks.process_lots_of_items_convert')
+def process_lots_of_items_convert(ids_to_process):
+    return TaskSet(process_chunk_convert.subtask((chunk, ))
                        for chunk in chunks(iter(ids_to_process),
                                            25)).apply_async()
-
+                                           
 @task(name='ta.tasks.process_chunk_cats')
 def process_chunk_cats(pks,ignore_result=True):
  #   f = open('/tmp/stuff-' + str(pks[0]) + '.txt', 'w')
@@ -113,6 +166,14 @@ def doTheBooks(objs):
 def doKnown():   
     foo = Price.objects.raw('SELECT id,amazon_id from ta_price a WHERE NOT EXISTS ( SELECT * FROM ta_price b WHERE b.amazon_id = a.amazon_id AND b.timestamp > a.timestamp ) AND a.buy > a.sell')
     #SELECT id,amazon_id FROM ( SELECT *, row_number() over (partition by amazon_id order by timestamp DESC) r from ta_price ) x where r = 1 AND buy > sell')
+    f = []
+    for s in foo:
+        f.append(s.amazon_id)
+    tasks.process_lots_of_items(f) 
+    
+@task(name='ta.tasks.doKnownAllTrades',ignore_result=True)   
+def doKnownAllTrades():   
+    foo = Price.objects.raw('SELECT id,amazon_id from ta_price a WHERE NOT EXISTS ( SELECT * FROM ta_price b WHERE b.amazon_id = a.amazon_id AND b.timestamp > a.timestamp ) AND a.buy > 0')
     f = []
     for s in foo:
         f.append(s.amazon_id)

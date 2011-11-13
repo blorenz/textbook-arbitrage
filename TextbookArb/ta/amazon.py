@@ -2,7 +2,7 @@ from lxml import html as lhtml
 from lxml import etree
 from lxml.html.clean import clean_html
 import requests
-from models import Amazon_Textbook_Section as ats, ATS_Middle, ProfitableBooks, MetaTable, Proxy, Book, Amazon, Price, AmazonRankCategory, AmazonRank
+from models import AmazonMongo, Amazon_NR, Price_NR, Book_NR, ProfitableBooks_NR, MetaTable_NR
 from django.db import IntegrityError
 import re
 from django.db.models import F
@@ -10,6 +10,8 @@ import tasks
 from django.db import connection, transaction
 import chilkat
 import sys
+from datetime import datetime
+from django_mongodb_engine.contrib import MongoDBManager
 
 # JINGWEMAILQ_tp6gXy5G9RoQ - mail
 
@@ -90,16 +92,16 @@ def importContent(url,content):
   
 def createOrUpdateMetaField(keyvalue, value1):
     try:
-        obj = MetaTable.objects.get(metakey=keyvalue)
-    except MetaTable.DoesNotExist:
-        obj = MetaTable(metakey=keyvalue,metatype="INTEGER")
+        obj = MetaTable_NR.objects.get(metakey=keyvalue)
+    except MetaTable_NR.DoesNotExist:
+        obj = MetaTable_NR(metakey=keyvalue,metatype="INTEGER")
     obj.int_field = value1
     obj.save()  
 
 def updateBookCounts():  
-    createOrUpdateMetaField("totalIndexed",Price.objects.values('amazon_id').distinct().count())
-    createOrUpdateMetaField("totalBooks",Amazon.objects.count())
-    createOrUpdateMetaField("totalProfitable",ProfitableBooks.objects.all().count())
+    createOrUpdateMetaField("totalIndexed",AmazonMongo.objects.count())
+    createOrUpdateMetaField("totalBooks",AmazonMongo.objects.count())
+    createOrUpdateMetaField("totalProfitable",ProfitableBooks_NR.objects.all().count())
 
 def deleteExtraneousPricesWorker(objs):
     for obj in objs:
@@ -126,25 +128,52 @@ def addProxy(type,proxy):
     p = Proxy(proxy_type=type,ip_and_port=proxy)
     p.save()
     
+# thread = ta.models.AmazonMongo.objects.get().fields(slice__prices=-1)
+
+def checkProfitable(a):
+    print a
+    price = a.prices[-1]
+    if price.buy:
+        if price.buy > price.sell:
+            b = ProfitableBooks_NR()
+            b.amazon = a.amazon
+            b.price = price
+            b.timestamp = price.timestamp
+            b.save()
+    
+   
+def nullTimes(a):
+    if not a.prices[-1].timestamp:
+        a.prices[-1].timestamp = datetime.now
+        a.prices[-1].last_timestamp = datetime.now
+        a.save()
+        
+       
+    
 def getProfitableBooks():
-    cursor = connection.cursor()
-    cursor.execute("SELECT * from ta_price a WHERE NOT EXISTS ( SELECT * FROM ta_price b WHERE b.amazon_id = a.amazon_id AND b.timestamp > a.timestamp ) AND a.buy > a.sell AND a.timestamp > '2011-10-13 09:23:54-04';")
-    rows = cursor.fetchall()
-    cursor.execute("TRUNCATE ta_profitablebooks")
-    transaction.commit_unless_managed()
-    with transaction.commit_on_success():
-     for f in iter(rows):
-      obj = ProfitableBooks(price=Price.objects.get(pk=f[0]),buy=f[2],sell=f[3])
-      obj.save()
+    AmazonMongo.objects.all().delete()
+    objs = AmazonMongo.objects.values_list('id',flat=True)
+    tasks.process_lots_of_items_profitable.delay(objs)
+    
+#    cursor = connection.cursor()
+#    cursor.execute("SELECT * from ta_price a WHERE NOT EXISTS ( SELECT * FROM ta_price b WHERE b.amazon_id = a.amazon_id AND b.timestamp > a.timestamp ) AND a.buy > a.sell AND a.timestamp > '2011-10-13 09:23:54-04';")
+#    rows = cursor.fetchall()
+#    cursor.execute("TRUNCATE ta_profitablebooks")
+#    transaction.commit_unless_managed()
+#    with transaction.commit_on_success():
+#     for f in iter(rows):
+#      obj = ProfitableBooks(price=Price.objects.get(pk=f[0]),buy=f[2],sell=f[3])
+#      obj.save()
      
 def getTheMiddle():
     for cat in ats.objects.all():
                  for i in range(1,101):
-                     ATS_Middle.objects.create(page=i,section=cat)
+                     ATS_Midd
+                     le.objects.create(page=i,section=cat)
                      
 def detailAllBooks():    
-    objs = Amazon.objects.values_list('productcode', flat=True)
-    tasks.process_lots_of_items(objs)
+    objs = AmazonMongo.objects.values_list('id', flat=True)
+    tasks.process_lots_of_items.delay(objs)
     
 def findBooks(url,page):
     content = retrievePage(url + '&page=' + str(page))
@@ -320,7 +349,9 @@ def lookForBooks():
                      
 
 def parseUsedPage(am):
-    url = 'http://www.amazon.com/gp/offer-listing/%s/ref=dp_olp_used?ie=UTF8&condition=used' % (am.productcode)
+    if not am.latest_price:
+        am.price = Price_NR() 
+    url = 'http://www.amazon.com/gp/offer-listing/%s/ref=dp_olp_used?ie=UTF8&condition=used' % (am.amazon.productcode)
     content = retrievePage(url)
     html = lhtml.fromstring(content)
     matches = re.search(r'Get a \$?(\d*\.\d{2}) Amazon.com Gift Card when you sell back your copy of this book.',html.text_content())
@@ -336,13 +367,15 @@ def parseUsedPage(am):
         sellprice = re.match('\$?(\d*\.\d{2})',result.cssselect('.price')[0].text_content())
         if sellprice != None and buyprice != None:
             sellprice = sellprice.group(1)
-            #print sellprice
-            #print buyprice
-            price = Price(buy = buyprice, sell = sellprice, amazon = am)
-            price.save()
+
+            price = Price_NR(buy = buyprice, sell = sellprice)
         else:
-            price = Price(amazon = am)
-            price.save()      
+            price = Price_NR()   
+             
+        am.prices.append(price)
+        print price
+        am.latest_price = price
+        am.save()
         #print result.cssselect('.condition')[0].text_content()
         break
          
@@ -360,5 +393,99 @@ def testthis():
     for i in range(100):
     	tic(url,i)
     
+def convertBooks():
+    amz = Amazon.objects.all()
+    
+    for a in amz:
+       
+        am = AmazonMongo()
+        
+        bk = Book_NR()
+        ama = Amazon_NR()
+        
+        bk.pckey = a.book.pckey
+        bk.title = a.book.title
+        bk.isbn = a.book.isbn
+        bk.isbn10 = a.book.isbn10
+        bk.author = a.book.author
+        ama.book = bk
+        ama.productcode = a.productcode
+        ama.timestamp = a.timestamp
+        
+        prices = Price.objects.filter(amazon=a).order_by('timestamp')
+        
+        plist = []
+
+        for p in prices:
+            newPrice = Price_NR()
+            if p.buy:
+                newPrice.buy = float(p.buy)
+            else:
+                newPrice.buy = p.buy
+            
+            if p.sell:
+                newPrice.sell = float(p.sell)
+            else:
+                newPrice.sell = p.sell
+                
+            newPrice.timestamp = p.timestamp
+            newPrice.last_timestamp = p.last_timestamp
+            plist.append(newPrice)
+
+        am.prices = plist
+            
+        
+        
+        am.amazon = ama
+        am.save()
+  
+def convertAllBooks():
+    amz = Amazon.objects.all().values_list("productcode",flat=True)
+    print amz
+    tasks.process_lots_of_items_convert.delay(amz)
+          
+def convertBook(a):
+      
+        am = AmazonMongo()
+        
+        bk = Book_NR()
+        ama = Amazon_NR()
+        
+        bk.pckey = a.book.pckey
+        bk.title = a.book.title
+        bk.isbn = a.book.isbn
+        bk.isbn10 = a.book.isbn10
+        bk.author = a.book.author
+        ama.book = bk
+        ama.productcode = a.productcode
+        ama.timestamp = a.timestamp
+        
+        prices = Price.objects.filter(amazon=a).order_by('timestamp')
+        
+        plist = []
+
+        for p in prices:
+            newPrice = Price_NR()
+            if p.buy:
+                newPrice.buy = float(p.buy)
+            else:
+                newPrice.buy = p.buy
+            
+            if p.sell:
+                newPrice.sell = float(p.sell)
+            else:
+                newPrice.sell = p.sell
+                
+            newPrice.timestamp = p.timestamp
+            newPrice.last_timestamp = p.last_timestamp
+            plist.append(newPrice)
+
+        am.prices = plist
+            
+        
+        
+        am.amazon = ama
+        am.save()
+
 if (__name__ == '__main__'):
     testit2()

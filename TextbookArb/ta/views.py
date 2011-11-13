@@ -1,6 +1,6 @@
 # Create your views here.
 from django.shortcuts import render_to_response
-from ta.models import Amazon_Textbook_Section, ProfitableBooks, Book, Amazon, Price, ATS_Middle, MetaTable
+from ta.models import *
 from django.core.context_processors import csrf
 from django.http import HttpRequest, HttpResponse
 from celery.task.sets import TaskSet
@@ -10,6 +10,7 @@ from amazon import f7, difference
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 import json
+from django_mongodb_engine.contrib import MongoDBManager
 
 def loginThing(request):
     if request.method == 'POST':
@@ -40,7 +41,8 @@ def lazy(request):
     
 def getHistoricalPrices(request):
     amz_code = request.GET['amazoncode']
-    foo = Price.objects.raw("SELECT id,buy,sell,timestamp from ta_price a WHERE a.amazon_id = '" + amz_code + "' ORDER BY a.timestamp ASC")
+    return
+    foo = Price_NR.objects.raw("SELECT id,buy,sell,timestamp from ta_price a WHERE a.amazon_id = '" + amz_code + "' ORDER BY a.timestamp ASC")
     output = []
     lastprice = -1
     
@@ -64,10 +66,11 @@ def getHistoricalPrices(request):
     return HttpResponse(json.dumps(output))
     
 def getKnown(request):
-    tasks.doKnown.delay()
+    tasks.doKnownAllTrades.delay()
     return HttpResponse('Did it!')
     
-def getAllKnown(request):   
+def getAllKnown(request):
+    return
     foo = Price.objects.raw('SELECT id,amazon_id FROM ( SELECT *, row_number() over (partition by amazon_id order by timestamp DESC) r from ta_price ) x where r = 1 AND buy <> null')
     f = []
     for s in foo:
@@ -84,19 +87,19 @@ def getDeals(request):
     else:
       referer = 'http://www.amazon.com/gp/product/%s/ref=as_li_ss_tl?ie=UTF8&tag=ngre-20&linkCode=as2&camp=217145&creative=399373&creativeASIN=%s'
 
-    totalIndexed = MetaTable.objects.get(metakey="totalIndexed").int_field
-    totalBooks = MetaTable.objects.get(metakey="totalBooks").int_field
-    totalProfitable = MetaTable.objects.get(metakey="totalProfitable").int_field
+    totalIndexed = MetaTable_NR.objects.get(metakey="totalIndexed").int_field
+    totalBooks = MetaTable_NR.objects.get(metakey="totalBooks").int_field
+    totalProfitable = MetaTable_NR.objects.get(metakey="totalProfitable").int_field
 
-    foo = ProfitableBooks.objects.all().values_list("price",flat=True)
-
-    objs = Price.objects.filter(pk__in=foo).values_list("buy","sell","amazon__productcode","amazon__book__title","timestamp")
+    #objs = ProfitableBooks_NR.objects.all()
+    objs = AmazonMongo.objectsa.raw_query({'latest_price.buy': {'$gt': 0}})
+    #objs = Price.objects.filter(pk__in=foo).values_list("buy","sell","amazon__productcode","amazon__book__title","timestamp")
     
     for obj in iter(objs):
         ctb = 0
         actb = 0
-        theBuy = float(obj[0])
-        theSell = float(obj[1])
+        theBuy = float(obj.latest_price.buy)
+        theSell = float(obj.latest_price.sell)
         
         if (theSell != 0):
             ctb = (theBuy-theSell) / theSell
@@ -105,13 +108,13 @@ def getDeals(request):
             actb = round(actb * 100,2)
             
 
-            productCode = obj[2]
+            productCode = obj.amazon.productcode
             dictItems[productCode] = (referer % (productCode, productCode),
-                                 obj[3],
+                                 obj.amazon.book.title,
                                 theBuy,
                                 theSell,
                                 theBuy - theSell,
-            	    ctb, actb, obj[4], productCode )
+            	    ctb, actb, obj.latest_price.last_timestamp, productCode )
     
     return render_to_response('deals.html', {'dictItems': dictItems, 
                                              'totalIndexed': totalIndexed,

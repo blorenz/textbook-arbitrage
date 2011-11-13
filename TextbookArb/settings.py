@@ -10,20 +10,21 @@ ADMINS = (
 MANAGERS = ADMINS
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2', # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
-        'NAME': 'ta',                      # Or path to database file if using sqlite3.
-        'USER': 'ta',                      # Not used with sqlite3.
-        'PASSWORD': 'manganello1',                  # Not used with sqlite3.
-        'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
-        'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
-    },
-    'mongo' : {
+#    'default': {
+#        'ENGINE': 'django.db.backends.postgresql_psycopg2', # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
+#        'NAME': 'ta',                      # Or path to database file if using sqlite3.
+#        'USER': 'ta',                      # Not used with sqlite3.
+#        'PASSWORD': 'manganello1',                  # Not used with sqlite3.
+#        'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
+#        'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
+#    },
+    'default' : {
       'ENGINE' : 'django_mongodb_engine',
-      'NAME' : 'ta_database'
+      'NAME' : 'ta_db'
    }
 }
 
+#DATABASE_ROUTERS = ['ta.routers.MyAppRouter2',]
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
 # although not all choices may be available on all operating systems.
@@ -122,6 +123,8 @@ import os
 import sys
 sys.path.append(os.getcwd())
 
+SITE_ID=u'4eb890cc957dae0a8f00001d'
+
 INSTALLED_APPS = (
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -137,6 +140,8 @@ INSTALLED_APPS = (
     #'south',
     'gunicorn',
     'debug_toolbar',
+    'djangotoolbox',
+    'django_mongodb_engine',
 )
 
 DEBUG_TOOLBAR_PANELS = (
@@ -193,54 +198,54 @@ CELERYD_CONCURRENCY = 10
 CELERY_RESULT_BACKEND = "amqp"
 CELERY_AMQP_TASK_RESULT_EXPIRES = 30  # 5 hours.
 CELERYD_MAX_TASKS_PER_CHILD = 3
-CELERYD_TASK_TIME_LIMIT = 600   
+CELERYD_TASK_TIME_LIMIT = 1800   
 
 from datetime import timedelta
 from celery.schedules import crontab
 
-CELERY_QUEUES = {
-    "default": {
-        "exchange": "default",
-        "binding_key": "default"},
-    "quickqueue": {
-        "exchange": "quickq",
-        "exchange_type": "topic",
-        "binding_key": "quickq.quick", 
-    },
-}
+#CELERY_QUEUES = {
+#    "default": {
+#        "exchange": "default",
+#        "binding_key": "default"},
+#    "quickqueue": {
+#        "exchange": "quickq",
+#        "exchange_type": "topic",
+#        "binding_key": "quickq.quick", 
+#    },
+#}
+#
+#CELERY_ROUTES = (
+#    {
+#        "ta.tasks.updateBCs": {
+#            "queue": "quickqueue"
+#        },
+#    },
+#) 
 
-CELERY_ROUTES = (
-    {
-        "ta.tasks.updateBCs": {
-            "queue": "quickqueue"
-        },
-    },
-) 
-
-CELERY_DEFAULT_QUEUE = "default"
-CELERY_DEFAULT_EXCHANGE = "default"
-CELERY_DEFAULT_EXCHANGE_TYPE = "direct"
-CELERY_DEFAULT_ROUTING_KEY = "default"
+#CELERY_DEFAULT_QUEUE = "default"
+#CELERY_DEFAULT_EXCHANGE = "default"
+#CELERY_DEFAULT_EXCHANGE_TYPE = "direct"
+#CELERY_DEFAULT_ROUTING_KEY = "default"
 
 CELERYBEAT_SCHEDULE = {
-    "runs-every-600-seconds": {
-        "task": "ta.tasks.updateBCs",
-        "schedule": timedelta(seconds=180),
-    },
+#    "runs-every-600-seconds": {
+#        "task": "ta.tasks.updateBCs",
+#        "schedule": timedelta(seconds=180),
+#    },
     # Executes every morning at 4am
     "every-morning": {
         "task": "ta.tasks.findNewBooks",
         "schedule": crontab(hour=2, minute=30,),
     },
     # Executes every morning at 4am
-    "every-morning3": {
-        "task": "ta.tasks.findNewBooks",
-        "schedule": crontab(hour=12, minute=00,),
-    },
-    "every-morning2": {
-        "task": "ta.tasks.lookForNewBooks",
-        "schedule": crontab(hour=0, minute=0,),
-    },
+    #"every-morning3": {
+    #    "task": "ta.tasks.findNewBooks",
+    #    "schedule": crontab(hour=12, minute=00,),
+    #},
+#    "every-morning2": {
+#        "task": "ta.tasks.lookForNewBooks",
+#        "schedule": crontab(hour=0, minute=0,),
+#    },
 }
 
 #end django-celery
