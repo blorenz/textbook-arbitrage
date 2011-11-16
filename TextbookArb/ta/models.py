@@ -189,6 +189,7 @@ class AmazonMongoTradeIn(models.Model):
     amazon = EmbeddedModelField('Amazon_NR')
     prices = ListField(EmbeddedModelField('Price_NR'))
     latest_price = EmbeddedModelField('Price_NR')
-    
+    profitable = models.IntegerField(null=True)
+
     def __unicode__(self):
         return self.amazon

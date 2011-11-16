@@ -198,7 +198,6 @@ CELERYD_CONCURRENCY = 10
 CELERY_RESULT_BACKEND = "amqp"
 CELERY_AMQP_TASK_RESULT_EXPIRES = 30  # 5 hours.
 CELERYD_MAX_TASKS_PER_CHILD = 3
-CELERYD_TASK_TIME_LIMIT = 1800   
 
 from datetime import timedelta
 from celery.schedules import crontab
@@ -233,10 +232,10 @@ CELERYBEAT_SCHEDULE = {
 #        "schedule": timedelta(seconds=180),
 #    },
     # Executes every morning at 4am
-    "every-morning": {
-        "task": "ta.tasks.findNewBooks",
-        "schedule": crontab(hour="*/12"),
-    },
+#    "every-morning": {
+#        "task": "ta.tasks.findNewBooks",
+#        "schedule": crontab(hour="*/12"),
+#    },
     # Executes every morning at 4am
     #"every-morning3": {
     #    "task": "ta.tasks.findNewBooks",

@@ -2,7 +2,7 @@ from lxml import html as lhtml
 from lxml import etree
 from lxml.html.clean import clean_html
 import requests
-from models import AmazonMongo, AmazonMongoTradeIn, Amazon_NR, Price_NR, Book_NR, ProfitableBooks_NR, MetaTable_NR
+from models import AmazonMongo, AmazonMongoTradeIn, Amazon_Textbook_Section_NR, Amazon_NR, Price_NR, Book_NR, ProfitableBooks_NR, MetaTable_NR
 from django.db import IntegrityError
 import re
 from django.db.models import F
@@ -62,6 +62,21 @@ def f7(seq):
 def difference(a, b):
     return list(set(b).difference(set(a))) 
 
+def getROI(theBuy,theSell):
+    theBuy = float(theBuy)
+    theSell = float(theSell)
+    actb = (theBuy-(theSell+3.99)) / (theSell+3.99)
+    actb = round(actb * 100,2)
+    return actb
+
+def isGoodProfit(obj):
+    theBuy = float(obj.latest_price.buy)
+    theSell = float(obj.latest_price.sell)
+    actb = (theBuy-(theSell+3.99)) / (theSell+3.99)
+    actb = round(actb * 100,2)
+    if actb >= 50.0:
+        return True
+    return False
 
     
 def retrievePage(url,proxy=None):
@@ -148,7 +163,7 @@ def getTheMiddle():
                      ATS_Middle.objects.create(page=i,section=cat)
                      
 def detailAllBooks():    
-    objs = AmazonMongo.objects.values_list('id', flat=True)
+    objs = AmazonMongoTradeIn.objects.values_list('id', flat=True)
     tasks.process_lots_of_items.delay(objs)
 
 
@@ -213,19 +228,81 @@ def getBooksOnTradeinPage(url,page):
         
         price = Price_NR()      
         am.latest_price = price
-        
+        am.profitable = 0
+       
         am.save()
         
+   
+def getDepartmentContainer(containers):
+    for container in containers:
+        s = container.cssselect("div.narrowItemHeading")
+        matches = re.search(r'Department',s[0].text_content())
+        if matches: 
+            return container
+    return None
+
+def getFormatContainer(containers):
+    for container in containers:
+        s = container.cssselect("div.narrowItemHeading")
+        matches = re.search(r'Format',s[0].text_content())
+        if matches: 
+            return container
+    return None
+
+def addFacetToScan(url):
+    content = retrievePage(url)
+    html = lhtml.fromstring(content)
+    
+    containers = html.xpath(".//*[@class='refinementContainer']")
+    thecontainer = getDepartmentContainer(containers)
+    
+    if thecontainer is None:
+        return
+    
+    s = thecontainer.xpath("./table//div[@class='refinement']")
+   # s = thecontainer.xpath(".//div[@class='refinement']//table")
+    if not len(s):
+        addCategoryToScan(url)
         
+    for cat in s:
+            el = cat.cssselect("a")
+            if el:
+                addFacetToScan(el[0].get('href'))
+   # print 'Made it thru!'
+         
 def addCategoryToScan(url):
     content = retrievePage(url)
     html = lhtml.fromstring(content)
+    
     s = html.xpath("//h1[@class='breadCrumb']")
-    ats = Amazon_Textbook_Section_NR(title=s[0].text,url=url)
-    ats.save()
+    breadcrumb = s[0].text_content()
+    
+    print breadcrumb
+    containers = html.xpath(".//*[@class='refinementContainer']")
+    thecontainer = getFormatContainer(containers)
+    
+    if thecontainer is None:
+        ats = Amazon_Textbook_Section_NR(title=breadcrumb,url=url)
+        ats.save()
+        return
+    
+    s = thecontainer.xpath(".//div[@class='refinement']")
+    for cat in s:
+        el = cat.cssselect("a")
+        if el:
+            ats = Amazon_Textbook_Section_NR(title=breadcrumb + " " + el[0].text_content(),url=el[0].get('href'))
+            ats.save()
+
+def scanCategories():
+    objs = Amazon_Textbook_Section_NR.objects.all()
+    for obj in iter(objs):
+        tasks.task_scanCategoryAndAddBooks.delay(obj)  
     
 def scanCategoryAndAddBooks(cat):
-    pass
+    books = countBooksInCategory(cat.url)
+    pages = int(books) / 12 + 1
+    for i in range(1,pages+1):
+        tasks.scanTradeInPage.delay(cat.url,i)
     
 def lookForBooks():   
     objs = ATS_Middle.objects.values_list('id', flat=True)      
@@ -236,9 +313,12 @@ def parseUsedPage(am):
     if not am.latest_price:
         am.price = Price_NR() 
     url = 'http://www.amazon.com/gp/offer-listing/%s/ref=dp_olp_used?ie=UTF8&condition=used' % (am.amazon.productcode)
-    content = retrievePage(url)
+    try:
+        content = retrievePage(url)
+    except:
+        return
     html = lhtml.fromstring(content)
-    matches = re.search(r'Get a \$?(\d*\.\d{2}) Amazon.com Gift Card when you sell back your copy of this book.',html.text_content())
+    matches = re.search(r'a \$?(\d*\.\d{2}) Amazon.com Gift Card',html.text_content())
     buyprice = None
     if matches != None: 
         buyprice = matches.group(1)
@@ -257,8 +337,13 @@ def parseUsedPage(am):
             price = Price_NR()   
              
         am.prices.append(price)
-        print price
         am.latest_price = price
+        
+        if price.buy and price.sell:
+            if getROI(price.buy,price.sell) > 30.0:
+                am.profitable = 1
+            else:
+                am.profitable = 0
         am.save()
         #print result.cssselect('.condition')[0].text_content()
         break

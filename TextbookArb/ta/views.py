@@ -6,7 +6,7 @@ from django.http import HttpRequest, HttpResponse
 from celery.task.sets import TaskSet
 from django.db.models import F
 import tasks
-from amazon import f7, difference
+from amazon import f7, difference, isGoodProfit
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 import json
@@ -32,7 +32,10 @@ def loginThing(request):
         return render_to_response('login.html',c)
 	
     
-    
+def known(request):
+    tasks.findNewBooks.delay()
+    return HttpResponse('done!')
+  
 def lazy(request):
     objs = Amazon.objects.values_list('productcode', flat=True).filter(productcode=request.GET['product'])
     tasks.process_lots_of_items(objs)
@@ -75,15 +78,15 @@ def getDeals(request):
     else:
       referer = 'http://www.amazon.com/gp/product/%s/ref=as_li_ss_tl?ie=UTF8&tag=ngre-20&linkCode=as2&camp=217145&creative=399373&creativeASIN=%s'
 
-    totalIndexed = MetaTable_NR.objects.get(metakey="totalIndexed").int_field
-    totalBooks = MetaTable_NR.objects.get(metakey="totalBooks").int_field
-    totalProfitable = MetaTable_NR.objects.get(metakey="totalProfitable").int_field
+    totalIndexed = AmazonMongoTradeIn.objects.all().count()#MetaTable_NR.objects.get(metakey="totalIndexed").int_field
+    totalBooks = AmazonMongoTradeIn.objects.all().count()#MetaTable_NR.objects.get(metakey="totalBooks").int_field
+    totalProfitable = AmazonMongoTradeIn.objects.all().count()#MetaTable_NR.objects.get(metakey="totalProfitable").int_field
 
     #objs = ProfitableBooks_NR.objects.all()
-    objs = AmazonMongo.objects.raw_query({'latest_price.buy': {'$gt': 0}})
-    #objs = Price.objects.filter(pk__in=foo).values_list("buy","sell","amazon__productcode","amazon__book__title","timestamp")
-    
-    for obj in iter(objs):
+    objs2 = AmazonMongoTradeIn.objects.raw_query({'$where': 'this.profitable == 1 && ((this.latest_price.buy-(this.latest_price.sell+3.99)) / (this.latest_price.sell+3.99)) > .1'})
+    #objs2 = list(e for e in objs if isGoodProfit(e))
+	
+    for obj in iter(objs2):
         ctb = 0
         actb = 0
         theBuy = float(obj.latest_price.buy)
@@ -95,7 +98,6 @@ def getDeals(request):
             ctb = round(ctb * 100,2)
             actb = round(actb * 100,2)
             
-
             productCode = obj.amazon.productcode
             dictItems[productCode] = (referer % (productCode, productCode),
                                  obj.amazon.book.title,
@@ -103,7 +105,7 @@ def getDeals(request):
                                 theSell,
                                 theBuy - theSell,
             	    ctb, actb, obj.latest_price.last_timestamp, productCode )
-    
+
     return render_to_response('deals.html', {'dictItems': dictItems, 
                                              'totalIndexed': totalIndexed,
                                              'totalProfitable': totalProfitable,

@@ -19,4 +19,5 @@ urlpatterns = patterns('',
     url(r'^lazy/$', 'TextbookArb.ta.views.lazy'),
     url(r'^cats/$', 'TextbookArb.ta.views.defineCategories'),
     url(r'^historical/$', 'TextbookArb.ta.views.getHistoricalPrices'),
+    url(r'^known/$', 'TextbookArb.ta.views.known'),
 )
