@@ -82,15 +82,17 @@ def getDeals(request):
     totalBooks = AmazonMongoTradeIn.objects.all().count()#MetaTable_NR.objects.get(metakey="totalBooks").int_field
     totalProfitable = AmazonMongoTradeIn.objects.all().count()#MetaTable_NR.objects.get(metakey="totalProfitable").int_field
 
-    #objs = ProfitableBooks_NR.objects.all()
-    objs2 = AmazonMongoTradeIn.objects.raw_query({'$where': 'this.profitable == 1 && ((this.latest_price.buy-(this.latest_price.sell+3.99)) / (this.latest_price.sell+3.99)) > .1'})
-    #objs2 = list(e for e in objs if isGoodProfit(e))
-	
+    objs2 = AmazonMongoTradeIn.objects.raw_query({'profitable' : {'$gte': 10}})
+
     for obj in iter(objs2):
         ctb = 0
         actb = 0
-        theBuy = float(obj.latest_price.buy)
-        theSell = float(obj.latest_price.sell)
+
+        try:
+            theBuy = float(obj.latest_price.buy)
+            theSell = float(obj.latest_price.sell)
+        except:
+            continue
         
         if (theSell != 0):
             ctb = (theBuy-theSell) / theSell

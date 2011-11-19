@@ -8,7 +8,7 @@ import re
 from django.db.models import F
 import tasks
 from django.db import connection, transaction
-import chilkat
+#import chilkat
 import sys
 from datetime import datetime
 from django_mongodb_engine.contrib import MongoDBManager
@@ -181,9 +181,9 @@ def countBooksInCategory(url):
 	correct number of pages.'''
     content = retrievePage(url)
     html = lhtml.fromstring(content)
-    st = open('/virtualenvs/ta/ta/static/static/testing.html','w')
-    st.write(content)
-    st.close()
+    #st = open('/virtualenvs/ta/ta/static/static/testing.html','w')
+    #st.write(content)
+    #st.close()
     
     s = html.xpath("//td[@class='resultCount']")
     resultsNoComma = 0
@@ -340,11 +340,12 @@ def parseUsedPage(am):
         am.latest_price = price
         
         if price.buy and price.sell:
-            if getROI(price.buy,price.sell) > 30.0:
-                am.profitable = 1
+            roi = getROI(price.buy,price.sell)
+            if roi:
+                am.profitable = roi
             else:
                 am.profitable = 0
-        am.save()
+        am.save() 
         #print result.cssselect('.condition')[0].text_content()
         break
          

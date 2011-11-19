@@ -1,13 +1,9 @@
-argparse
-Django
 BeautifulSoup
-Fabric==0.9.2
-virtualenv==1.5.2
+Django
 Celery 
 django-kombu
 South
 gunicorn
-MySQL-python
 docutils
 django-tagging
 lxml
