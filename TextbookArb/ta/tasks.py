@@ -37,6 +37,11 @@ def process_lots_of_items_extra(ids_to_process):
                        for chunk in chunks(iter(ids_to_process),
                                            25)).apply_async()
                                            
+@task(name='ta.tasks.task_addFacetToScan')
+def task_addFacetToScan(url):
+    print 'adding facet'    
+    addFacetToScan(url)
+
 @task(name='ta.tasks.task_scanCategoryAndAddBooks')  
 def task_scanCategoryAndAddBooks(obj):
     scanCategoryAndAddBooks(obj)     

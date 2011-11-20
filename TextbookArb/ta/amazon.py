@@ -267,7 +267,7 @@ def addFacetToScan(url):
     for cat in s:
             el = cat.cssselect("a")
             if el:
-                addFacetToScan(el[0].get('href'))
+                tasks.task_addFacetToScan.delay(el[0].get('href'))
    # print 'Made it thru!'
          
 def addCategoryToScan(url):
