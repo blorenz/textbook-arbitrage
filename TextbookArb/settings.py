@@ -122,8 +122,9 @@ import os
 import sys
 sys.path.append(os.getcwd())
 
-SITE_ID=u'4ec858f7957dae4737000019'
 
+#SITE_ID=u'4ec858f7957dae4737000019'
+SITE_ID=u'4ee57c6f957dae447500001d'
 INSTALLED_APPS = (
     'django.contrib.auth',
     'django.contrib.contenttypes',
