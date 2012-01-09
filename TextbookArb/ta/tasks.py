@@ -1,6 +1,6 @@
 from celery.task import TaskSet, task
 from amazon import *
-from ta.models import AmazonMongo, AmazonMongoTradeIn
+from ta.models import AmazonMongoTradeIn
 
 from itertools import islice
 
@@ -13,9 +13,9 @@ def chunks(it, n):
 @task(name='ta.tasks.process_chunk')
 def process_chunk(pks,ignore_result=True):
     #objs = Amazon_NR.objects.filter(pk__in=pks)
+    print 'Gonna process a chunk of ' + str(len(pks))
     for p in pks:
         objs = AmazonMongoTradeIn.objects.filter(pk=p)
-        #print str(len(objs))
         for obj in objs:
             #detailBook(obj)
             parseUsedPage(obj)

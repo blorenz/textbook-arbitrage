@@ -2,7 +2,7 @@ from lxml import html as lhtml
 from lxml import etree
 from lxml.html.clean import clean_html
 import requests
-from models import AmazonMongo, AmazonMongoTradeIn, Amazon_Textbook_Section_NR, Amazon_NR, Price_NR, Book_NR, ProfitableBooks_NR, MetaTable_NR
+from models import AmazonMongoTradeIn, Amazon_Textbook_Section_NR, Amazon_NR, Price_NR, Book_NR, ProfitableBooks_NR, MetaTable_NR
 from django.db import IntegrityError
 import re
 from django.db.models import F
@@ -107,8 +107,8 @@ def createOrUpdateMetaField(keyvalue, value1):
     obj.save()  
 
 def updateBookCounts():  
-    createOrUpdateMetaField("totalIndexed",AmazonMongo.objects.count())
-    createOrUpdateMetaField("totalBooks",AmazonMongo.objects.count())
+    createOrUpdateMetaField("totalIndexed",AmazonMongoTradeIn.objects.count())
+    createOrUpdateMetaField("totalBooks",AmazonMongoTradeIn.objects.count())
     createOrUpdateMetaField("totalProfitable",ProfitableBooks_NR.objects.all().count())
 
 def deleteExtraneousPricesWorker(objs):
@@ -152,8 +152,8 @@ def checkProfitable(a):
        
     
 def getProfitableBooks():
-    AmazonMongo.objects.all().delete()
-    objs = AmazonMongo.objects.values_list('id',flat=True)
+    AmazonMongoTradeIn.objects.all().delete()
+    objs = AmazonMongoTradeIn.objects.values_list('id',flat=True)
     tasks.process_lots_of_items_profitable.delay(objs)
     
      
@@ -164,6 +164,8 @@ def getTheMiddle():
                      
 def detailAllBooks():    
     objs = AmazonMongoTradeIn.objects.values_list('id', flat=True)
+    print 'Objs len is %d' % (len(objs),)
+    print 'ok done with that'
     tasks.process_lots_of_items.delay(objs)
 
 
@@ -355,62 +357,7 @@ def fetchPage(url):
     f = open('/virtualenvs/ta/ta/static/static/testing.html','w')
     f.write(content)
     f.close()
-    
-def testthis():
-    url = 'http://www.amazon.com/gp/search/ref=sr_ex_n_1?rh=n%3A283155%2Cn%3A%2144258011%2Cn%3A2205237011%2Cn%3A5&bbn=2205237011&ie=UTF8&qid=1317397002'
-    url2= 'http://www.amazon.com/Programming-Objective-C-3rd-Developers-Library/dp/0321711394/ref=sr_1_32?ie=UTF8&s=textbooks-trade-in&qid=1317401882&sr=1-32'
-    
-    for i in range(100):
-    	tic(url,i)
-    
   
-def convertAllBooks():
-    amz = Amazon.objects.all().values_list("productcode",flat=True)
-    print amz
-    tasks.process_lots_of_items_convert.delay(amz)
-          
-def convertBook(a):
-      
-        am = AmazonMongo()
-        
-        bk = Book_NR()
-        ama = Amazon_NR()
-        
-        bk.pckey = a.book.pckey
-        bk.title = a.book.title
-        bk.isbn = a.book.isbn
-        bk.isbn10 = a.book.isbn10
-        bk.author = a.book.author
-        ama.book = bk
-        ama.productcode = a.productcode
-        ama.timestamp = a.timestamp
-        
-        prices = Price.objects.filter(amazon=a).order_by('timestamp')
-        
-        plist = []
-
-        for p in prices:
-            newPrice = Price_NR()
-            if p.buy:
-                newPrice.buy = float(p.buy)
-            else:
-                newPrice.buy = p.buy
-            
-            if p.sell:
-                newPrice.sell = float(p.sell)
-            else:
-                newPrice.sell = p.sell
-                
-            newPrice.timestamp = p.timestamp
-            newPrice.last_timestamp = p.last_timestamp
-            plist.append(newPrice)
-
-        am.prices = plist
-            
-        
-        
-        am.amazon = ama
-        am.save()
 
 if (__name__ == '__main__'):
     testit2()

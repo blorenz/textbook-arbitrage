@@ -178,12 +178,6 @@ class ProfitableBooks_NR(models.Model):
     timestamp = models.DateTimeField(null=True)
 
     
-class AmazonMongo(models.Model):
-    objects = MongoDBManager()
-    amazon = EmbeddedModelField('Amazon_NR')
-    prices = ListField(EmbeddedModelField('Price_NR'))
-    latest_price = EmbeddedModelField('Price_NR')
-    
 class AmazonMongoTradeIn(models.Model):
     objects = MongoDBManager() 
     amazon = EmbeddedModelField('Amazon_NR')

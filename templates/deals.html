@@ -46,7 +46,7 @@
 	</thead>
 	<tbody>
 	{% for key,s in dictItems.items %}
-	<tr product="{{s.8}}"><td class="links"><a class="descLink" href="{{s.0}}">{{s.1}}</a><a href="#" class="historicalBuy"><img src="/static/icon_open_new_window.gif"></a></td><td>{{s.2}}</td><td>{{s.3}}</td><td>{{s.4}}</td><td>{{s.5}}</td><td>{{s.6}}</td><td>{{s.7}}</td></tr>
+	<tr product="{{s.8}}"><td class="links"><a class="descLink" href="{{s.0}}">{{s.1}}</a><a href="#" class="historicalBuy"><img src="/static/icon_open_new_window.gif"></a></td><td>{{s.2}}</td><td><a class="cb" href="{{s.9}}">{{s.3}}</a></td><td>{{s.4}}</td><td>{{s.5}}</td><td>{{s.6}}</td><td>{{s.7}}</td></tr>
 	{% endfor %}
 	</tbody>
 </table>
@@ -106,6 +106,8 @@ cursor:{
 
 
 $("td.links a:first-child").colorbox({width:"90%", height:"90%", iframe:true}); 
+$("a.cb").colorbox({width:"90%", height:"90%", iframe:true}); 
+ 
  $('#results').dataTable({
 	//"sPaginationType": "full_numbers",
         "aaSorting": [[ 5, "desc" ]],

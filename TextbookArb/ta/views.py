@@ -106,7 +106,8 @@ def getDeals(request):
                                 theBuy,
                                 theSell,
                                 theBuy - theSell,
-            	    ctb, actb, obj.latest_price.last_timestamp, productCode )
+            	    ctb, actb, obj.latest_price.last_timestamp, productCode,
+		    'http://www.amazon.com/gp/offer-listing/%s/ref=dp_olp_used?ie=UTF8&condition=used' % (productCode))
 
     return render_to_response('deals.html', {'dictItems': dictItems, 
                                              'totalIndexed': totalIndexed,
