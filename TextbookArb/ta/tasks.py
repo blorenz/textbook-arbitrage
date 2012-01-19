@@ -4,7 +4,9 @@ from ta.models import AmazonMongoTradeIn
 
 from itertools import islice
 
-
+@task(name='ta.tasks.add')
+def add(x,y):
+	return x + y
 
 def chunks(it, n):
     for first in it:

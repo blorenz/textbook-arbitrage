@@ -338,7 +338,7 @@ def parseUsedPage(am):
         else:
             price = Price_NR()   
              
-        am.prices.append(price)
+        #am.prices.append(price)
         am.latest_price = price
         
         if price.buy and price.sell:

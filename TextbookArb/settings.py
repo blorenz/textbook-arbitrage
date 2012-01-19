@@ -177,10 +177,9 @@ djcelery.setup_loader()
 
 BROKER_HOST = "localhost"
 BROKER_PORT = 5672
-BROKER_USER = "guest"
-
-BROKER_PASSWORD = "guest"
-BROKER_VHOST = "/"
+BROKER_USER = "ta"
+BROKER_PASSWORD = "colonel1"
+BROKER_VHOST = "/ta"
 
 CELERYD_CONCURRENCY = 15 
 CELERY_RESULT_BACKEND = "amqp"
