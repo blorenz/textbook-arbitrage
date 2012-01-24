@@ -312,6 +312,9 @@ def lookForBooks():
                      
 
 def parseUsedPage(am):
+    #f = open('/tmp/awesome.txt','w')
+    #f.write(am.amazon.productcode)
+    #f.close()
     if not am.latest_price:
         am.price = Price_NR() 
     url = 'http://www.amazon.com/gp/offer-listing/%s/ref=dp_olp_used?ie=UTF8&condition=used' % (am.amazon.productcode)
@@ -341,6 +344,9 @@ def parseUsedPage(am):
         #am.prices.append(price)
         am.latest_price = price
         
+        #f = open('/tmp/awesome.txt','w')
+        #f.write('this is the other side')
+        #f.close()
         if price.buy and price.sell:
             roi = getROI(price.buy,price.sell)
             if roi:

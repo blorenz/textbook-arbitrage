@@ -1,6 +1,8 @@
 from django.conf.urls.defaults import patterns, include, url
 
 # Uncomment the next two lines to enable the admin:
+from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+
 from django.contrib import admin
 admin.autodiscover()
 
@@ -21,3 +23,8 @@ urlpatterns = patterns('',
     url(r'^historical/$', 'TextbookArb.ta.views.getHistoricalPrices'),
     url(r'^known/$', 'TextbookArb.ta.views.known'),
 )
+
+
+
+
+urlpatterns += staticfiles_urlpatterns()

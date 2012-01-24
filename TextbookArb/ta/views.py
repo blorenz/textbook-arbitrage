@@ -2,6 +2,7 @@
 from django.shortcuts import render_to_response
 from ta.models import *
 from django.core.context_processors import csrf
+from django.template import RequestContext
 from django.http import HttpRequest, HttpResponse
 from celery.task.sets import TaskSet
 from django.db.models import F
@@ -108,13 +109,15 @@ def getDeals(request):
                                 theBuy - theSell,
             	    ctb, actb, obj.latest_price.last_timestamp, productCode,
 		    'http://www.amazon.com/gp/offer-listing/%s/ref=dp_olp_used?ie=UTF8&condition=used' % (productCode))
-
+    c = RequestContext(request)
     return render_to_response('deals.html', {'dictItems': dictItems, 
                                              'totalIndexed': totalIndexed,
                                              'totalProfitable': totalProfitable,
                                              'totalBooks': totalBooks,
                                              'username': request.user.username,
-                                             })
+					     },
+					     context_instance = c,
+					     )
 
 def logout_user(request):
 	logout(request)

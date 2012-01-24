@@ -65,7 +65,7 @@ STATIC_ROOT = '/virtualenvs/ta/ta/static/'
 
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"
-STATIC_URL = 'http://66.228.56.198/static/'
+STATIC_URL = '/static/'
 
 # URL prefix for admin static files -- CSS, JavaScript and images.
 # Make sure to use a trailing slash.
@@ -122,9 +122,9 @@ import os
 import sys
 sys.path.append(os.getcwd())
 
-
+SITE_ID=u'4f18decf957dae0a7f000000'
 #SITE_ID=u'4ec858f7957dae4737000019'
-SITE_ID=u'4ee57c6f957dae447500001d'
+#SITE_ID=u'4ee57c6f957dae447500001d'
 INSTALLED_APPS = (
     'django.contrib.auth',
     'django.contrib.contenttypes',
