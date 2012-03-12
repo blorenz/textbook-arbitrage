@@ -5,7 +5,7 @@
 <script type="text/javascript" src="http://code.jquery.com/jquery-1.6.4.min.js"></script>
 <script type="text/javascript" src="http://datatables.net/download/build/jquery.dataTables.min.js"></script>
 <script type="text/javascript" src="{{STATIC_URL}}jquery.colorbox-min.js"></script>
-<link  rel="stylesheet" type="text/css" href="http://www.datatables.net/release-datatables/media/css/demo_table.css" />
+<link  rel="stylesheet" type="text/css" href="{{STATIC_URL}}demo_table.css" />
 <link  rel="stylesheet" type="text/css" href="{{STATIC_URL}}colorbox.css" />
 
 <style type="text/css">
@@ -41,7 +41,7 @@
 	</thead>
 	<tbody>
 	{% for key,s in dictItems.items %}
-	<tr product="{{s.8}}"><td class="links"><a class="descLink" href="{{s.0}}">{{s.1}}</a><a href="#" class="historicalBuy"><img src="/static/icon_open_new_window.gif"></a></td><td>{{s.2}}</td><td><a class="cb" href="{{s.9}}">{{s.3}}</a></td><td>{{s.4}}</td><td>{{s.5}}</td><td>{{s.6}}</td><td>{{s.7}}</td></tr>
+	<tr product="{{s.8}}"><td class="links"><a class="descLink" target="_blank" href="{{s.0}}">{{s.1}}</a><a target="_blank" href="#" class="historicalBuy"><img src="/static/icon_open_new_window.gif"></a></td><td>{{s.2}}</td><td><a class="cb" target="_blank" href="{{s.9}}">{{s.3}}</a></td><td>{{s.4}}</td><td>{{s.5}}</td><td>{{s.6}}</td><td>{{s.7}}</td></tr>
 	{% endfor %}
 	</tbody>
 </table>
@@ -59,10 +59,10 @@ var doAjax = function(code) {
 
 $(document).ready(function(){
 	
-	$('tbody tr a').bind("click", function() {
-		 doAjax($(this).parent().parent().attr('product'))
+//	$('tbody tr a').bind("click", function() {
+//		 doAjax($(this).parent().parent().attr('product'))
 		 	 
-		 });
+		 //});
 
  $(".historicalBuy").click(function() {
 		var $el = $(this);
@@ -100,15 +100,17 @@ cursor:{
 	});
 
 
-$("td.links a:first-child").colorbox({width:"90%", height:"90%", iframe:true}); 
-$("a.cb").colorbox({width:"90%", height:"90%", iframe:true}); 
+//$("td.links a:first-child").colorbox({width:"90%", height:"90%", iframe:true}); 
+//$("a.cb").colorbox({width:"90%", height:"90%", iframe:true}); 
  
  $('#results').dataTable({
 	//"sPaginationType": "full_numbers",
-        "aaSorting": [[ 5, "desc" ]],
-	"bScrollInfinite": true,
-        "bScrollCollapse": true,
-        "sScrollY": "300px"
+"bPaginate": false,
+        "bLengthChange": false,
+        "aaSorting": [[ 5, "desc" ]]
+	//"bScrollInfinite": true,
+        //"bScrollCollapse": true,
+        //"sScrollY": "300px"
     });
 
  	

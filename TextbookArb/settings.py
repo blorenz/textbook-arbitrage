@@ -225,10 +225,14 @@ CELERYBEAT_SCHEDULE = {
 #        "schedule": crontab(hour="*/12"),
 #    },
     # Executes every morning at 4am
-    #"every-morning3": {
-    #    "task": "ta.tasks.findNewBooks",
-    #    "schedule": crontab(hour=12, minute=00,),
-    #},
+    "every-evening": {
+        "task": "ta.amazon.detailAllBooks",
+        "schedule": crontab(hour=19, minute=00,),
+    },
+    "every-morning3": {
+        "task": "ta.amazon.detailAllBooks",
+        "schedule": crontab(hour=7, minute=00,),
+    },
 #    "every-morning2": {
 #        "task": "ta.tasks.lookForNewBooks",
 #        "schedule": crontab(hour=0, minute=0,),

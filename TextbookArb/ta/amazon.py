@@ -111,22 +111,6 @@ def updateBookCounts():
     createOrUpdateMetaField("totalBooks",AmazonMongoTradeIn.objects.count())
     createOrUpdateMetaField("totalProfitable",ProfitableBooks_NR.objects.all().count())
 
-def deleteExtraneousPricesWorker(objs):
-    for obj in objs:
-	    amz = Price.objects.filter(amazon=obj).order_by("-timestamp")
-	    count = len(amz)
-	    if count > 1:
-	        for i in xrange(count-1,1,-1): 
-	            if (amz[i-1].buy == amz[i-2].buy) and (amz[i-1].sell == amz[i-2].sell):
-	                amz[i-1].delete()
-        #for row in amz:
-          #print "[%s] %s: buy %s sell %s at %s good for %s" % (row.id, row.amazon.productcode, row.buy, row.sell, row.timestamp, row.last_timestamp)
-
-def deleteExtraneousPricesAM():
-	print 'Going for it!'
-	objs = Amazon.objects.values_list("productcode",flat=True)
-	print 'Got objects'
-	tasks.process_lots_of_items_extra.delay(objs)   
 	     
 def addCategory(url):
     content = retrievePage(url,proxy=False)
@@ -166,7 +150,7 @@ def detailAllBooks():
     objs = AmazonMongoTradeIn.objects.values_list('id', flat=True)
     print 'Objs len is %d' % (len(objs),)
     print 'ok done with that'
-    tasks.process_lots_of_items.delay(objs)
+    tasks.process_lots_of_items(objs)
 
 
 '''
