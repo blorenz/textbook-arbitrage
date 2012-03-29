@@ -344,9 +344,6 @@ def parseUsedPage(am):
      
 def fetchPage(url):
     content = retrievePage(url)
-    f = open('/virtualenvs/ta/ta/static/static/testing.html','w')
-    f.write(content)
-    f.close()
   
 
 if (__name__ == '__main__'):
