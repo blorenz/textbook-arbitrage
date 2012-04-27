@@ -61,7 +61,7 @@ MEDIA_URL = ''
 # Don't put anything in this directory yourself; store your static files
 # in apps' "static/" subdirectories and in STATICFILES_DIRS.
 # Example: "/home/media/media.lawrence.com/static/"
-STATIC_ROOT = '/virtualenvs/ta/ta/static/'
+STATIC_ROOT = '/home/blorenz/amazon_books_env/amazon_books/TextbookArb/ta/ta/static/'
 
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"
@@ -115,7 +115,8 @@ TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
-    '/virtualenvs/ta/ta/templates'
+    '/home/blorenz/amazon_books_env/amazon_books/templates',
+    #'/virtualenvs/ta/ta/templates'
 )
 
 import os
@@ -177,9 +178,9 @@ djcelery.setup_loader()
 
 BROKER_HOST = "localhost"
 BROKER_PORT = 5672
-BROKER_USER = "ta"
-BROKER_PASSWORD = "colonel1"
-BROKER_VHOST = "/ta"
+BROKER_USER = "guest"
+BROKER_PASSWORD = "guest"
+BROKER_VHOST = "/"
 
 CELERYD_CONCURRENCY = 15 
 CELERY_RESULT_BACKEND = "amqp"

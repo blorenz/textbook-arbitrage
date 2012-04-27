@@ -80,16 +80,21 @@ def isGoodProfit(obj):
 
     
 def retrievePage(url,proxy=None):
+
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 6.0) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/17.0.963.66 Safari/535.11",};
     
     if (proxy):
         theProxy = Proxy.objects.order_by('?')[0]
         proxy = {theProxy.proxy_type:theProxy.ip_and_port}
-        r = requests.get(url,proxies=proxy)
+        r = requests.get(url,proxies=proxy,headers=headers)
     else:
-        r = requests.get(url)
+        r = requests.get(url,headers=headers)
     return r.content
 
-    
+   
+def toAscii(content):
+    return unicode(content).encode('ascii', 'ignore')
+
 def importContent(url,content):
     html = lhtml.fromstring(content)
     a = ats(url=unicode(url).encode('ascii', 'ignore'),title = unicode(html.xpath("//*[@class='breadCrumb']")[0].text_content()).encode('ascii', 'ignore'))
@@ -171,7 +176,7 @@ def countBooksInCategory(url):
     #st.write(content)
     #st.close()
     
-    s = html.xpath("//td[@class='resultCount']")
+    s = html.xpath("//div[@id='resultCount']")
     resultsNoComma = 0
   
     if len(s):
@@ -184,8 +189,10 @@ def countBooksInCategory(url):
             
     return resultsNoComma
     
+# Edited on Apr27
 def getBooksOnTradeinPage(url,page):
     '''Gets all the books on the tradein page'''
+    print ('Getting books for ' + url + '&page=' + str(page))
     content = retrievePage(url + "&page=" + str(page))
     html = lhtml.fromstring(content)
     
@@ -193,11 +200,14 @@ def getBooksOnTradeinPage(url,page):
 #    file.write(content)
 #    file.close()
     
-    s = html.xpath("//td[@class='dataColumn']")
+    listview = html.xpath("//div[@class='listView']")
+
+    #s = html.xpath("//td[@class='dataColumn']")
   
+    s = listview[0].xpath("//div[contains(concat(' ',normalize-space(@class),' '),' product ')]")
     for result in s:
         aa = result.cssselect("a")
-        title = result.cssselect(".srTitle")
+        title = result.cssselect(".productTitle")
         re_product_code = re.compile(r'/dp/(.*?)/')
         pc = re.findall(re_product_code,aa[0].get('href'))
         
@@ -205,7 +215,7 @@ def getBooksOnTradeinPage(url,page):
         
         b = Book_NR()
         b.pckey = pc[0]
-        b.title = title[0].text
+        b.title = title[0].text_content()
         
         a = Amazon_NR()
         a.book = b
@@ -221,10 +231,15 @@ def getBooksOnTradeinPage(url,page):
    
 def getDepartmentContainer(containers):
     for container in containers:
-        s = container.cssselect("div.narrowItemHeading")
-        matches = re.search(r'Department',s[0].text_content())
-        if matches: 
-            return container
+# Selects [New Releases, Departments, ...]
+        h2s = container.cssselect("h2")
+        for s in h2s:
+        #s = container.cssselect("h2")
+            print s.text_content()
+        #s = container.cssselect("div.narrowItemHeading")
+            matches = re.search(r'Department',s.text_content())
+            if matches: 
+                return container
     return None
 
 def getFormatContainer(containers):
@@ -235,38 +250,54 @@ def getFormatContainer(containers):
             return container
     return None
 
+# Works on Apr 27
 def addFacetToScan(url):
     content = retrievePage(url)
+    #import hashlib
+
+    #fetchPage(url,'facet-' + hashlib.sha224(url).hexdigest());
     html = lhtml.fromstring(content)
     
-    containers = html.xpath(".//*[@class='refinementContainer']")
-    thecontainer = getDepartmentContainer(containers)
-    
+    # This selects the container on the left sidebar of Tradein Page
+    containers = html.xpath(".//*[@id='refinements']")
+
+    #containers = html.xpath(".//*[@class='refinementContainer']")
+    #thecontainer = getDepartmentContainer(containers)
+   
+    thecontainer = html.xpath('//*[@class="expand"]/parent::node()/parent::node()/parent::node()')
     if thecontainer is None:
         return
     
-    s = thecontainer.xpath("./table//div[@class='refinement']")
-   # s = thecontainer.xpath(".//div[@class='refinement']//table")
+    #Get all navigable directories
+    s = thecontainer[0].xpath("./li/a/span[@class='refinementLink']")
+    # No more to get -- this is a leaf node so add it to scan
     if not len(s):
         addCategoryToScan(url)
         
     for cat in s:
-            el = cat.cssselect("a")
-            if el:
-                tasks.task_addFacetToScan.delay(el[0].get('href'))
-   # print 'Made it thru!'
+    # Get to the anchor tag
+        el = cat.xpath("./parent::node()");
+        if el:
+            tasks.task_addFacetToScan.delay("http://www.amazon.com" + el[0].get('href'))
+    print 'Made it thru!'
          
+# Works on Apr 27
 def addCategoryToScan(url):
     content = retrievePage(url)
+    #import hashlib
+
+    #fetchPage(url,'cat-' + hashlib.sha224(url).hexdigest());
     html = lhtml.fromstring(content)
     
-    s = html.xpath("//h1[@class='breadCrumb']")
-    breadcrumb = s[0].text_content()
+    # CHANGED s = html.xpath("//h1[@class='breadCrumb']")
+    s = html.xpath("//h1[@id='breadCrumb']")
+    breadcrumb = toAscii(s[0].text_content())
     
-    print breadcrumb
+    #print breadcrumb
     containers = html.xpath(".//*[@class='refinementContainer']")
     thecontainer = getFormatContainer(containers)
-    
+   
+    #currently always going here - Apr27
     if thecontainer is None:
         ats = Amazon_Textbook_Section_NR(title=breadcrumb,url=url)
         ats.save()
@@ -286,9 +317,11 @@ def scanCategories():
     
 def scanCategoryAndAddBooks(cat):
     books = countBooksInCategory(cat.url)
+    #print "Counted " + str(books)
     pages = int(books) / 12 + 1
     for i in range(1,pages+1):
         tasks.scanTradeInPage.delay(cat.url,i)
+        #tasks.scanTradeInPage(cat.url,i)
     
 def lookForBooks():   
     objs = ATS_Middle.objects.values_list('id', flat=True)      
@@ -342,9 +375,9 @@ def parseUsedPage(am):
         break
          
      
-def fetchPage(url):
+def fetchPage(url,add):
     content = retrievePage(url)
-    f = open('/virtualenvs/ta/ta/static/static/testing.html','w')
+    f = open('/home/seocortex/dropbox/web/static/testing-'+add+'.html','w')
     f.write(content)
     f.close()
   

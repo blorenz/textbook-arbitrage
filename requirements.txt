@@ -1,5 +1,5 @@
 BeautifulSoup
-Django
+Django==1.3.1
 Celery 
 django-kombu
 South

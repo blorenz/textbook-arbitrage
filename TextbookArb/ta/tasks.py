@@ -1,6 +1,7 @@
 from celery.task import TaskSet, task
 from amazon import *
 from ta.models import AmazonMongoTradeIn
+from ta.amazon import *
 
 from itertools import islice
 
