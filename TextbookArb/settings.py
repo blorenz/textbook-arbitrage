@@ -123,7 +123,8 @@ import os
 import sys
 sys.path.append(os.getcwd())
 
-SITE_ID=u'4f18decf957dae0a7f000000'
+SITE_ID=u'4f9b4191a551c5756755d89f'
+#SITE_ID=u'4f18decf957dae0a7f000000'
 #SITE_ID=u'4ec858f7957dae4737000019'
 #SITE_ID=u'4ee57c6f957dae447500001d'
 INSTALLED_APPS = (
@@ -182,7 +183,7 @@ BROKER_USER = "guest"
 BROKER_PASSWORD = "guest"
 BROKER_VHOST = "/"
 
-CELERYD_CONCURRENCY = 15 
+CELERYD_CONCURRENCY = 15
 CELERY_RESULT_BACKEND = "amqp"
 CELERY_AMQP_TASK_RESULT_EXPIRES = 30  # 5 hours.
 CELERYD_MAX_TASKS_PER_CHILD = 3
@@ -198,7 +199,7 @@ from celery.schedules import crontab
 #    "quickqueue": {
 #        "exchange": "quickq",
 #        "exchange_type": "topic",
-#        "binding_key": "quickq.quick", 
+#        "binding_key": "quickq.quick",
 #    },
 #}
 #
@@ -208,7 +209,7 @@ from celery.schedules import crontab
 #            "queue": "quickqueue"
 #        },
 #    },
-#) 
+#)
 
 #CELERY_DEFAULT_QUEUE = "default"
 #CELERY_DEFAULT_EXCHANGE = "default"
